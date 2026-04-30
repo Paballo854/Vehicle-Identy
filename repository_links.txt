@@ -1,3 +1,13 @@
 GitHub Repository: https://github.com/Paballo854/Vehicle-Identy
 
 Release Page: https://github.com/Paballo854/Vehicle-Identy/releases/tag/v1.0
+
+
+
+
+
+GitHub Repository: https://github.com/Paballo854/Vehicle-Identy
+
+Release Download: https://github.com/Paballo854/Vehicle-Identy/releases/tag/v2.0
+
+Direct ZIP Download: https://github.com/Paballo854/Vehicle-Identy/releases/download/v2.0/VehicleIDSystem_Release.zip

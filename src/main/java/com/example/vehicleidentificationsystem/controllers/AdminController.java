@@ -416,20 +416,38 @@ public class AdminController {
                 String grantConnectSql = "GRANT CONNECT ON DATABASE vehicle_db TO " + username;
                 try (Statement stmt = currentUser.getDbConnection().createStatement()) {
                     stmt.execute(grantConnectSql);
+                    System.out.println("✅ Granted CONNECT to: " + username);
+                }
+
+                // Grant USAGE on schema (CRITICAL - without this, nothing works)
+                String grantUsageSql = "GRANT USAGE ON SCHEMA public TO " + username;
+                try (Statement stmt = currentUser.getDbConnection().createStatement()) {
+                    stmt.execute(grantUsageSql);
+                    System.out.println("✅ Granted USAGE ON SCHEMA to: " + username);
                 }
 
                 // Grant SELECT on app_user (CRITICAL for login)
                 String grantAppUserSql = "GRANT SELECT ON app_user TO " + username;
                 try (Statement stmt = currentUser.getDbConnection().createStatement()) {
                     stmt.execute(grantAppUserSql);
-                    System.out.println("✅ Granted SELECT on app_user to: " + username);
+                    System.out.println("✅ Granted SELECT ON app_user to: " + username);
                 }
 
-                // Grant USAGE on ALL sequences (FIXES ALL SEQUENCE ERRORS)
+                // Grant SELECT on ALL tables
+                String[] allTables = {"vehicle", "customer", "service_record", "customer_query", "police_report", "violation", "insurance", "insurance_company", "workshop"};
+                for (String table : allTables) {
+                    String grantSelect = "GRANT SELECT ON " + table + " TO " + username;
+                    try (Statement stmt = currentUser.getDbConnection().createStatement()) {
+                        stmt.execute(grantSelect);
+                    }
+                }
+                System.out.println("✅ Granted SELECT on all tables to: " + username);
+
+                // Grant USAGE on ALL sequences
                 String grantAllSequencesSql = "GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO " + username;
                 try (Statement stmt = currentUser.getDbConnection().createStatement()) {
                     stmt.execute(grantAllSequencesSql);
-                    System.out.println("✅ Granted ALL sequence permissions to: " + username);
+                    System.out.println("✅ Granted sequence permissions to: " + username);
                 }
 
                 // Grant role-specific permissions
@@ -438,52 +456,58 @@ public class AdminController {
                     try (Statement stmt = currentUser.getDbConnection().createStatement()) {
                         stmt.execute(grantAdminSql);
                     }
+                    System.out.println("✅ Granted ADMIN permissions to: " + username);
                 } else if (role.equals("POLICE")) {
                     String[] grants = {
-                            "GRANT SELECT ON vehicle TO " + username,
                             "GRANT SELECT, INSERT ON police_report TO " + username,
                             "GRANT SELECT, INSERT ON violation TO " + username,
-                            "GRANT SELECT ON customer TO " + username
+                            "GRANT USAGE, SELECT ON SEQUENCE police_report_report_id_seq TO " + username,
+                            "GRANT USAGE, SELECT ON SEQUENCE violation_violation_id_seq TO " + username
                     };
                     try (Statement stmt = currentUser.getDbConnection().createStatement()) {
                         for (String grant : grants) {
                             stmt.execute(grant);
                         }
                     }
+                    System.out.println("✅ Granted POLICE permissions to: " + username);
                 } else if (role.equals("WORKSHOP")) {
                     String[] grants = {
-                            "GRANT SELECT, INSERT, UPDATE ON vehicle TO " + username,
                             "GRANT SELECT, INSERT, UPDATE ON service_record TO " + username,
-                            "GRANT SELECT ON customer TO " + username
+                            "GRANT SELECT, INSERT, UPDATE ON vehicle TO " + username,
+                            "GRANT SELECT ON customer_query TO " + username,
+                            "GRANT UPDATE ON customer_query TO " + username,
+                            "GRANT USAGE, SELECT ON SEQUENCE service_record_service_id_seq TO " + username
                     };
                     try (Statement stmt = currentUser.getDbConnection().createStatement()) {
                         for (String grant : grants) {
                             stmt.execute(grant);
                         }
                     }
+                    System.out.println("✅ Granted WORKSHOP permissions to: " + username);
                 } else if (role.equals("INSURANCE")) {
                     String[] grants = {
-                            "GRANT SELECT ON vehicle TO " + username,
                             "GRANT SELECT, INSERT, UPDATE ON insurance TO " + username,
-                            "GRANT SELECT ON customer TO " + username
+                            "GRANT SELECT ON insurance_company TO " + username,
+                            "GRANT USAGE, SELECT ON SEQUENCE insurance_insurance_id_seq TO " + username
                     };
                     try (Statement stmt = currentUser.getDbConnection().createStatement()) {
                         for (String grant : grants) {
                             stmt.execute(grant);
                         }
                     }
+                    System.out.println("✅ Granted INSURANCE permissions to: " + username);
                 } else if (role.equals("CUSTOMER")) {
                     String[] grants = {
-                            "GRANT SELECT ON vehicle TO " + username,
                             "GRANT SELECT, INSERT ON customer_query TO " + username,
-                            "GRANT SELECT ON customer TO " + username,
-                            "GRANT SELECT ON service_record TO " + username
+                            "GRANT SELECT ON service_record TO " + username,
+                            "GRANT USAGE, SELECT ON SEQUENCE customer_query_query_id_seq TO " + username
                     };
                     try (Statement stmt = currentUser.getDbConnection().createStatement()) {
                         for (String grant : grants) {
                             stmt.execute(grant);
                         }
                     }
+                    System.out.println("✅ Granted CUSTOMER permissions to: " + username);
                 }
 
                 System.out.println("✅ All PostgreSQL permissions granted for: " + username);

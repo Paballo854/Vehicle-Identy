@@ -6,6 +6,7 @@ import com.example.vehicleidentificationsystem.services.VehicleService;
 import com.example.vehicleidentificationsystem.utils.AlertUtils;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.*;
@@ -42,161 +43,303 @@ public class InsuranceController {
 
         VBox root = new VBox(15);
         root.setPadding(new Insets(20));
+        root.setStyle("-fx-background-color: #f4f6f9;");
 
-        Label title = new Label("Insurance Management");
-        title.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
+        // Form Panel at the top
+        TitledPane formPane = createFormPane();
 
-        insuranceTable = new TableView<>();
-        insuranceTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-        createTableColumns();
+        // Table Panel below
+        VBox tableContainer = createTableContainer();
 
-        VBox formPanel = createFormPanel();
-
-        root.getChildren().addAll(title, formPanel, insuranceTable);
+        root.getChildren().addAll(formPane, tableContainer);
 
         loadData();
 
         return root;
     }
 
-    private void createTableColumns() {
-        TableColumn<Insurance, Integer> idCol = new TableColumn<>("ID");
-        idCol.setCellValueFactory(new PropertyValueFactory<>("insuranceId"));
+    private TitledPane createFormPane() {
+        TitledPane titledPane = new TitledPane();
+        titledPane.setText("Add New Insurance Policy");
+        titledPane.setCollapsible(true);
+        titledPane.setExpanded(true);
+        titledPane.setStyle("-fx-font-weight: bold; -fx-background-color: white; -fx-background-radius: 12;");
 
-        TableColumn<Insurance, String> vehicleCol = new TableColumn<>("Vehicle");
-        vehicleCol.setCellValueFactory(new PropertyValueFactory<>("vehicleReg"));
+        // Main container for left and right sections
+        HBox mainContainer = new HBox(30);
+        mainContainer.setPadding(new Insets(20));
+        mainContainer.setStyle("-fx-background-color: white; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 8, 0, 0, 2);");
 
-        TableColumn<Insurance, String> policyCol = new TableColumn<>("Policy Number");
-        policyCol.setCellValueFactory(new PropertyValueFactory<>("policyNumber"));
+        // LEFT SIDE - Search sections (Vehicle + Insurance Company)
+        VBox leftSection = createLeftSection();
 
-        TableColumn<Insurance, String> providerCol = new TableColumn<>("Provider");
-        providerCol.setCellValueFactory(new PropertyValueFactory<>("provider"));
+        // RIGHT SIDE - Policy Details
+        VBox rightSection = createRightSection();
 
-        TableColumn<Insurance, String> typeCol = new TableColumn<>("Insurance Type");
-        typeCol.setCellValueFactory(new PropertyValueFactory<>("insuranceType"));
+        // Set widths
+        leftSection.setPrefWidth(350);
+        rightSection.setPrefWidth(400);
+        HBox.setHgrow(rightSection, Priority.ALWAYS);
 
-        TableColumn<Insurance, LocalDate> startCol = new TableColumn<>("Start Date");
-        startCol.setCellValueFactory(new PropertyValueFactory<>("startDate"));
+        mainContainer.getChildren().addAll(leftSection, rightSection);
 
-        TableColumn<Insurance, LocalDate> expiryCol = new TableColumn<>("Expiry Date");
-        expiryCol.setCellValueFactory(new PropertyValueFactory<>("expiryDate"));
-
-        TableColumn<Insurance, String> statusCol = new TableColumn<>("Status");
-        statusCol.setCellValueFactory(new PropertyValueFactory<>("status"));
-
-        TableColumn<Insurance, Double> premiumCol = new TableColumn<>("Premium (M)");
-        premiumCol.setCellValueFactory(new PropertyValueFactory<>("premiumAmount"));
-
-        TableColumn<Insurance, String> companyCol = new TableColumn<>("Insurance Company");
-        companyCol.setCellValueFactory(new PropertyValueFactory<>("companyName"));
-
-        insuranceTable.getColumns().addAll(idCol, vehicleCol, policyCol, providerCol, typeCol,
-                startCol, expiryCol, statusCol, premiumCol, companyCol);
+        titledPane.setContent(mainContainer);
+        return titledPane;
     }
 
-    private VBox createFormPanel() {
-        VBox formPanel = new VBox(10);
-        formPanel.setPadding(new Insets(10));
+    private VBox createLeftSection() {
+        VBox leftSection = new VBox(15);
+        leftSection.setPadding(new Insets(0, 15, 0, 0));
 
-        Label formTitle = new Label("Insurance Record");
-        formTitle.setStyle("-fx-font-weight: bold;");
+        if (currentUser.getRole().equals("ADMIN")) {
+            // Vehicle Search Section
+            VBox vehicleSection = new VBox(8);
+            Label vehicleLabel = new Label("Vehicle Information");
+            vehicleLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 13px; -fx-text-fill: #1f2937;");
+            vehicleSection.getChildren().add(vehicleLabel);
+
+            // Search row
+            HBox searchRow = new HBox(8);
+            txtSearchVehicle = new TextField();
+            txtSearchVehicle.setPromptText("Enter registration number");
+            txtSearchVehicle.setPrefWidth(180);
+            Button btnSearchVehicle = new Button("Search");
+            btnSearchVehicle.setStyle("-fx-background-color: #1d3557; -fx-text-fill: white; -fx-padding: 6 12; -fx-background-radius: 6; -fx-cursor: hand;");
+            btnSearchVehicle.setOnAction(e -> searchVehicle());
+            searchRow.getChildren().addAll(txtSearchVehicle, btnSearchVehicle);
+            vehicleSection.getChildren().add(searchRow);
+
+            // Select combo
+            vehicleSearchCombo = new ComboBox<>();
+            vehicleSearchCombo.setPromptText("Select from results");
+            vehicleSearchCombo.setPrefWidth(280);
+            vehicleSearchCombo.setVisible(false);
+            vehicleSearchCombo.setOnAction(e -> {
+                if (vehicleSearchCombo.getValue() != null) {
+                    selectedVehicleLabel.setText("Selected: " + vehicleSearchCombo.getValue().getRegistrationNumber());
+                }
+            });
+            vehicleSection.getChildren().add(vehicleSearchCombo);
+
+            selectedVehicleLabel = new Label("No vehicle selected");
+            selectedVehicleLabel.setStyle("-fx-text-fill: #999; -fx-font-size: 11px;");
+            vehicleSection.getChildren().add(selectedVehicleLabel);
+
+            leftSection.getChildren().add(vehicleSection);
+
+            // Separator
+            Separator separator = new Separator();
+            separator.setPadding(new Insets(10, 0, 10, 0));
+            leftSection.getChildren().add(separator);
+
+            // Insurance Company Search Section
+            VBox companySection = new VBox(8);
+            Label companyLabel = new Label("Insurance Company");
+            companyLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 13px; -fx-text-fill: #1f2937;");
+            companySection.getChildren().add(companyLabel);
+
+            HBox companySearchRow = new HBox(8);
+            txtSearchCompany = new TextField();
+            txtSearchCompany.setPromptText("Enter company name");
+            txtSearchCompany.setPrefWidth(180);
+            Button btnSearchCompany = new Button("Search");
+            btnSearchCompany.setStyle("-fx-background-color: #1d3557; -fx-text-fill: white; -fx-padding: 6 12; -fx-background-radius: 6; -fx-cursor: hand;");
+            btnSearchCompany.setOnAction(e -> searchCompany());
+            companySearchRow.getChildren().addAll(txtSearchCompany, btnSearchCompany);
+            companySection.getChildren().add(companySearchRow);
+
+            companySearchCombo = new ComboBox<>();
+            companySearchCombo.setPromptText("Select from results");
+            companySearchCombo.setPrefWidth(280);
+            companySearchCombo.setVisible(false);
+            companySearchCombo.setOnAction(e -> {
+                if (companySearchCombo.getValue() != null) {
+                    selectedCompanyLabel.setText("Selected: " + companySearchCombo.getValue().getName());
+                }
+            });
+            companySection.getChildren().add(companySearchCombo);
+
+            selectedCompanyLabel = new Label("No company selected");
+            selectedCompanyLabel.setStyle("-fx-text-fill: #999; -fx-font-size: 11px;");
+            companySection.getChildren().add(selectedCompanyLabel);
+
+            leftSection.getChildren().add(companySection);
+        } else {
+            // For regular INSURANCE user
+            VBox vehicleSection = new VBox(8);
+            Label vehicleLabel = new Label("Vehicle Information");
+            vehicleLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 13px; -fx-text-fill: #1f2937;");
+            vehicleSection.getChildren().add(vehicleLabel);
+
+            vehicleCombo = new ComboBox<>();
+            vehicleCombo.setPromptText("Select vehicle");
+            vehicleCombo.setPrefWidth(280);
+            vehicleSection.getChildren().add(vehicleCombo);
+
+            leftSection.getChildren().add(vehicleSection);
+        }
+
+        return leftSection;
+    }
+
+    private VBox createRightSection() {
+        VBox rightSection = new VBox(12);
+        rightSection.setPadding(new Insets(0, 0, 0, 15));
+        rightSection.setStyle("-fx-border-color: #e5e7eb; -fx-border-width: 0 0 0 1;");
+
+        Label policyLabel = new Label("Policy Details");
+        policyLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 13px; -fx-text-fill: #1f2937;");
 
         GridPane formGrid = new GridPane();
-        formGrid.setHgap(10);
-        formGrid.setVgap(8);
+        formGrid.setHgap(12);
+        formGrid.setVgap(10);
+        formGrid.setPadding(new Insets(10, 0, 0, 0));
 
         int row = 0;
 
-        if (currentUser.getRole().equals("ADMIN")) {
-            // Vehicle search for ADMIN
-            formGrid.add(new Label("Vehicle (Search):"), 0, row);
-            txtSearchVehicle = new TextField();
-            txtSearchVehicle.setPromptText("Enter registration number to search");
-            txtSearchVehicle.setPrefWidth(180);
-            Button btnSearchVehicle = new Button("Search");
-            btnSearchVehicle.setOnAction(e -> searchVehicle());
-            HBox searchVehicleBox = new HBox(5, txtSearchVehicle, btnSearchVehicle);
-            formGrid.add(searchVehicleBox, 1, row++);
-
-            formGrid.add(new Label("Select Vehicle:"), 0, row);
-            vehicleSearchCombo = new ComboBox<>();
-            vehicleSearchCombo.setPromptText("Search results will appear here");
-            vehicleSearchCombo.setPrefWidth(300);
-            vehicleSearchCombo.setVisible(false);
-            formGrid.add(vehicleSearchCombo, 1, row++);
-
-            selectedVehicleLabel = new Label("No vehicle selected");
-            formGrid.add(selectedVehicleLabel, 1, row++);
-
-            // Company search for ADMIN
-            formGrid.add(new Label("Insurance Company (Search):"), 0, row);
-            txtSearchCompany = new TextField();
-            txtSearchCompany.setPromptText("Enter company name to search");
-            txtSearchCompany.setPrefWidth(180);
-            Button btnSearchCompany = new Button("Search");
-            btnSearchCompany.setOnAction(e -> searchCompany());
-            HBox searchCompanyBox = new HBox(5, txtSearchCompany, btnSearchCompany);
-            formGrid.add(searchCompanyBox, 1, row++);
-
-            formGrid.add(new Label("Select Company:"), 0, row);
-            companySearchCombo = new ComboBox<>();
-            companySearchCombo.setPromptText("Search results will appear here");
-            companySearchCombo.setPrefWidth(300);
-            companySearchCombo.setVisible(false);
-            formGrid.add(companySearchCombo, 1, row++);
-
-            selectedCompanyLabel = new Label("No company selected");
-            formGrid.add(selectedCompanyLabel, 1, row++);
-        } else {
-            // For regular INSURANCE user
-            formGrid.add(new Label("Vehicle:"), 0, row);
-            vehicleCombo = new ComboBox<>();
-            vehicleCombo.setPrefWidth(250);
-            formGrid.add(vehicleCombo, 1, row++);
-        }
-
+        // Policy Number
         formGrid.add(new Label("Policy Number:"), 0, row);
         txtPolicyNumber = new TextField();
-        formGrid.add(txtPolicyNumber, 1, row++);
+        txtPolicyNumber.setPromptText("Enter policy number");
+        txtPolicyNumber.setPrefWidth(220);
+        formGrid.add(txtPolicyNumber, 1, row);
+        row++;
 
+        // Provider
         formGrid.add(new Label("Provider:"), 0, row);
         txtProvider = new TextField();
-        formGrid.add(txtProvider, 1, row++);
+        txtProvider.setPromptText("Enter provider name");
+        txtProvider.setPrefWidth(220);
+        formGrid.add(txtProvider, 1, row);
+        row++;
 
+        // Insurance Type
         formGrid.add(new Label("Insurance Type:"), 0, row);
         insuranceTypeCombo = new ComboBox<>();
         insuranceTypeCombo.getItems().addAll("Comprehensive", "Third Party", "Extended Warranty", "Roadside", "Gap");
         insuranceTypeCombo.setValue("Comprehensive");
-        formGrid.add(insuranceTypeCombo, 1, row++);
+        insuranceTypeCombo.setPrefWidth(220);
+        formGrid.add(insuranceTypeCombo, 1, row);
+        row++;
 
+        // Premium Amount
         formGrid.add(new Label("Premium (M):"), 0, row);
         txtPremiumAmount = new TextField();
-        formGrid.add(txtPremiumAmount, 1, row++);
+        txtPremiumAmount.setPromptText("Enter amount");
+        txtPremiumAmount.setPrefWidth(150);
+        formGrid.add(txtPremiumAmount, 1, row);
+        row++;
 
+        // Start Date
         formGrid.add(new Label("Start Date:"), 0, row);
         startDatePicker = new DatePicker(LocalDate.now());
-        formGrid.add(startDatePicker, 1, row++);
+        startDatePicker.setPrefWidth(150);
+        formGrid.add(startDatePicker, 1, row);
+        row++;
 
+        // Expiry Date
         formGrid.add(new Label("Expiry Date:"), 0, row);
         expiryDatePicker = new DatePicker(LocalDate.now().plusYears(1));
-        formGrid.add(expiryDatePicker, 1, row++);
+        expiryDatePicker.setPrefWidth(150);
+        formGrid.add(expiryDatePicker, 1, row);
+        row++;
 
+        // Status
         formGrid.add(new Label("Status:"), 0, row);
         statusCombo = new ComboBox<>();
         statusCombo.getItems().addAll("Active", "Expired", "Cancelled");
         statusCombo.setValue("Active");
-        formGrid.add(statusCombo, 1, row++);
+        statusCombo.setPrefWidth(150);
+        formGrid.add(statusCombo, 1, row);
+        row++;
 
+        // Buttons
         HBox buttonBox = new HBox(10);
+        buttonBox.setPadding(new Insets(15, 0, 5, 0));
+
         Button btnAdd = new Button("Add Insurance");
+        btnAdd.setStyle("-fx-background-color: #1d3557; -fx-text-fill: white; -fx-font-weight: 500; -fx-padding: 8 20; -fx-background-radius: 6; -fx-cursor: hand;");
+        btnAdd.setOnMouseEntered(e -> btnAdd.setStyle("-fx-background-color: #457b9d; -fx-text-fill: white; -fx-font-weight: 500; -fx-padding: 8 20; -fx-background-radius: 6; -fx-cursor: hand;"));
+        btnAdd.setOnMouseExited(e -> btnAdd.setStyle("-fx-background-color: #1d3557; -fx-text-fill: white; -fx-font-weight: 500; -fx-padding: 8 20; -fx-background-radius: 6; -fx-cursor: hand;"));
         btnAdd.setOnAction(e -> handleAdd());
+
         Button btnRefresh = new Button("Refresh");
+        btnRefresh.setStyle("-fx-background-color: #f0f0f0; -fx-text-fill: #333; -fx-font-weight: 500; -fx-padding: 8 16; -fx-background-radius: 6; -fx-cursor: hand;");
+        btnRefresh.setOnMouseEntered(e -> btnRefresh.setStyle("-fx-background-color: #e0e0e0; -fx-text-fill: #333; -fx-font-weight: 500; -fx-padding: 8 16; -fx-background-radius: 6; -fx-cursor: hand;"));
+        btnRefresh.setOnMouseExited(e -> btnRefresh.setStyle("-fx-background-color: #f0f0f0; -fx-text-fill: #333; -fx-font-weight: 500; -fx-padding: 8 16; -fx-background-radius: 6; -fx-cursor: hand;"));
         btnRefresh.setOnAction(e -> loadData());
+
         buttonBox.getChildren().addAll(btnAdd, btnRefresh);
+        formGrid.add(buttonBox, 0, row, 2, 1);
 
-        formPanel.getChildren().addAll(formTitle, formGrid, buttonBox);
+        rightSection.getChildren().addAll(policyLabel, formGrid);
 
-        return formPanel;
+        return rightSection;
+    }
+
+    private VBox createTableContainer() {
+        VBox tableContainer = new VBox(10);
+        tableContainer.setStyle("-fx-background-color: white; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 8, 0, 0, 2);");
+        tableContainer.setPadding(new Insets(15));
+
+        Label tableTitle = new Label("Insurance Policies");
+        tableTitle.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #1f2937;");
+
+        insuranceTable = new TableView<>();
+        insuranceTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        insuranceTable.setPlaceholder(new Label("No insurance policies found"));
+        createTableColumns();
+
+        VBox.setVgrow(insuranceTable, Priority.ALWAYS);
+
+        tableContainer.getChildren().addAll(tableTitle, insuranceTable);
+
+        return tableContainer;
+    }
+
+    private void createTableColumns() {
+        TableColumn<Insurance, Integer> idCol = new TableColumn<>("ID");
+        idCol.setCellValueFactory(new PropertyValueFactory<>("insuranceId"));
+        idCol.setPrefWidth(50);
+
+        TableColumn<Insurance, String> vehicleCol = new TableColumn<>("Vehicle");
+        vehicleCol.setCellValueFactory(new PropertyValueFactory<>("vehicleReg"));
+        vehicleCol.setPrefWidth(120);
+
+        TableColumn<Insurance, String> policyCol = new TableColumn<>("Policy Number");
+        policyCol.setCellValueFactory(new PropertyValueFactory<>("policyNumber"));
+        policyCol.setPrefWidth(150);
+
+        TableColumn<Insurance, String> providerCol = new TableColumn<>("Provider");
+        providerCol.setCellValueFactory(new PropertyValueFactory<>("provider"));
+        providerCol.setPrefWidth(150);
+
+        TableColumn<Insurance, String> typeCol = new TableColumn<>("Type");
+        typeCol.setCellValueFactory(new PropertyValueFactory<>("insuranceType"));
+        typeCol.setPrefWidth(100);
+
+        TableColumn<Insurance, LocalDate> startCol = new TableColumn<>("Start Date");
+        startCol.setCellValueFactory(new PropertyValueFactory<>("startDate"));
+        startCol.setPrefWidth(100);
+
+        TableColumn<Insurance, LocalDate> expiryCol = new TableColumn<>("Expiry Date");
+        expiryCol.setCellValueFactory(new PropertyValueFactory<>("expiryDate"));
+        expiryCol.setPrefWidth(100);
+
+        TableColumn<Insurance, String> statusCol = new TableColumn<>("Status");
+        statusCol.setCellValueFactory(new PropertyValueFactory<>("status"));
+        statusCol.setPrefWidth(80);
+
+        TableColumn<Insurance, Double> premiumCol = new TableColumn<>("Premium (M)");
+        premiumCol.setCellValueFactory(new PropertyValueFactory<>("premiumAmount"));
+        premiumCol.setPrefWidth(100);
+
+        TableColumn<Insurance, String> companyCol = new TableColumn<>("Insurance Company");
+        companyCol.setCellValueFactory(new PropertyValueFactory<>("companyName"));
+        companyCol.setPrefWidth(150);
+
+        insuranceTable.getColumns().addAll(idCol, vehicleCol, policyCol, providerCol, typeCol,
+                startCol, expiryCol, statusCol, premiumCol, companyCol);
     }
 
     private void searchVehicle() {
@@ -244,13 +387,6 @@ public class InsuranceController {
             });
             vehicleSearchCombo.setVisible(true);
             vehicleSearchCombo.setPromptText("Select vehicle (" + vehicles.size() + " found)");
-
-            vehicleSearchCombo.setOnAction(e -> {
-                Vehicle selected = vehicleSearchCombo.getValue();
-                if (selected != null) {
-                    selectedVehicleLabel.setText("Selected: " + selected.getRegistrationNumber());
-                }
-            });
         }
     }
 
@@ -298,13 +434,6 @@ public class InsuranceController {
             });
             companySearchCombo.setVisible(true);
             companySearchCombo.setPromptText("Select company (" + companies.size() + " found)");
-
-            companySearchCombo.setOnAction(e -> {
-                InsuranceCompany selected = companySearchCombo.getValue();
-                if (selected != null) {
-                    selectedCompanyLabel.setText("Selected: " + selected.getName());
-                }
-            });
         }
     }
 

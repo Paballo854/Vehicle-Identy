@@ -6,6 +6,7 @@ import com.example.vehicleidentificationsystem.services.VehicleService;
 import com.example.vehicleidentificationsystem.utils.AlertUtils;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.*;
@@ -53,13 +54,9 @@ public class PoliceController {
     public VBox createView(User user) {
         this.currentUser = user;
 
-        VBox root = new VBox(15);
-        root.setPadding(new Insets(20));
-
-        Label title = new Label("Police Module");
-        title.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
-
         tabPane = new TabPane();
+        tabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
+        tabPane.setStyle("-fx-font-size: 13px;");
 
         Tab reportsTab = new Tab("Police Reports");
         reportsTab.setContent(createReportsTab());
@@ -71,254 +68,421 @@ public class PoliceController {
 
         tabPane.getTabs().addAll(reportsTab, violationsTab);
 
-        root.getChildren().addAll(title, tabPane);
-
-        return root;
+        return new VBox(tabPane);
     }
 
     private VBox createReportsTab() {
-        VBox container = new VBox(15);
+        // Main container with 40/60 split
+        HBox mainContainer = new HBox(20);
+        mainContainer.setPadding(new Insets(20));
+        mainContainer.setAlignment(Pos.TOP_CENTER);
 
-        // FORM FIRST (at the top)
-        VBox formPanel = createReportForm();
+        // LEFT SIDE (40%) - Form
+        VBox leftPanel = createReportLeftPanel();
 
-        // TABLE SECOND (below)
-        reportTable = new TableView<>();
-        reportTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-        createReportColumns();
+        // RIGHT SIDE (60%) - Table
+        VBox rightPanel = createReportRightPanel();
 
-        container.getChildren().addAll(formPanel, reportTable);
+        leftPanel.setPrefWidth(400);
+        rightPanel.setPrefWidth(600);
+        HBox.setHgrow(rightPanel, Priority.ALWAYS);
+
+        mainContainer.getChildren().addAll(leftPanel, rightPanel);
 
         loadReports();
 
-        return container;
+        return new VBox(mainContainer);
+    }
+
+    private VBox createReportLeftPanel() {
+        VBox leftPanel = new VBox(15);
+        leftPanel.setStyle("-fx-background-color: white; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 8, 0, 0, 2);");
+        leftPanel.setPadding(new Insets(20));
+
+        Label formTitle = new Label("Add New Police Report");
+        formTitle.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #1f2937;");
+
+        VBox formPanel = createReportFormPanel();
+
+        leftPanel.getChildren().addAll(formTitle, formPanel);
+
+        return leftPanel;
+    }
+
+    private VBox createReportRightPanel() {
+        VBox rightPanel = new VBox(10);
+        rightPanel.setStyle("-fx-background-color: white; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 8, 0, 0, 2);");
+        rightPanel.setPadding(new Insets(15));
+
+        Label tableTitle = new Label("Police Reports");
+        tableTitle.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #1f2937;");
+
+        reportTable = new TableView<>();
+        reportTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        reportTable.setPlaceholder(new Label("No police reports found"));
+        createReportColumns();
+
+        VBox.setVgrow(reportTable, Priority.ALWAYS);
+
+        rightPanel.getChildren().addAll(tableTitle, reportTable);
+
+        return rightPanel;
+    }
+
+    private VBox createReportFormPanel() {
+        VBox formPanel = new VBox(12);
+
+        GridPane formGrid = new GridPane();
+        formGrid.setHgap(12);
+        formGrid.setVgap(10);
+        formGrid.setPadding(new Insets(10, 0, 0, 0));
+
+        int row = 0;
+
+        if (currentUser.getRole().equals("ADMIN")) {
+            // Vehicle Search Section
+            formGrid.add(new Label("Vehicle:"), 0, row);
+            HBox vehicleSearchBox = new HBox(8);
+            txtSearchVehicleReport = new TextField();
+            txtSearchVehicleReport.setPromptText("Enter registration number");
+            txtSearchVehicleReport.setPrefWidth(180);
+            Button btnSearchVehicle = new Button("Search");
+            btnSearchVehicle.setStyle("-fx-background-color: #1d3557; -fx-text-fill: white; -fx-padding: 6 12; -fx-background-radius: 6;");
+            btnSearchVehicle.setOnAction(e -> searchVehicleForReport());
+            vehicleSearchBox.getChildren().addAll(txtSearchVehicleReport, btnSearchVehicle);
+            formGrid.add(vehicleSearchBox, 1, row);
+            row++;
+
+            formGrid.add(new Label("Select:"), 0, row);
+            vehicleReportSearchCombo = new ComboBox<>();
+            vehicleReportSearchCombo.setPromptText("Select from results");
+            vehicleReportSearchCombo.setPrefWidth(250);
+            vehicleReportSearchCombo.setVisible(false);
+            vehicleReportSearchCombo.setOnAction(e -> {
+                if (vehicleReportSearchCombo.getValue() != null) {
+                    selectedVehicleReportLabel.setText("Selected: " + vehicleReportSearchCombo.getValue().getRegistrationNumber());
+                }
+            });
+            formGrid.add(vehicleReportSearchCombo, 1, row);
+            row++;
+
+            selectedVehicleReportLabel = new Label("No vehicle selected");
+            selectedVehicleReportLabel.setStyle("-fx-text-fill: #999; -fx-font-size: 11px;");
+            formGrid.add(selectedVehicleReportLabel, 1, row);
+            row++;
+
+            // Officer Search Section
+            formGrid.add(new Label("Officer:"), 0, row);
+            HBox officerSearchBox = new HBox(8);
+            txtSearchOfficerReport = new TextField();
+            txtSearchOfficerReport.setPromptText("Enter officer name");
+            txtSearchOfficerReport.setPrefWidth(180);
+            Button btnSearchOfficer = new Button("Search");
+            btnSearchOfficer.setStyle("-fx-background-color: #1d3557; -fx-text-fill: white; -fx-padding: 6 12; -fx-background-radius: 6;");
+            btnSearchOfficer.setOnAction(e -> searchOfficerForReport());
+            officerSearchBox.getChildren().addAll(txtSearchOfficerReport, btnSearchOfficer);
+            formGrid.add(officerSearchBox, 1, row);
+            row++;
+
+            formGrid.add(new Label("Select:"), 0, row);
+            officerReportSearchCombo = new ComboBox<>();
+            officerReportSearchCombo.setPromptText("Select from results");
+            officerReportSearchCombo.setPrefWidth(250);
+            officerReportSearchCombo.setVisible(false);
+            officerReportSearchCombo.setOnAction(e -> {
+                if (officerReportSearchCombo.getValue() != null) {
+                    selectedOfficerReportLabel.setText("Selected: " + officerReportSearchCombo.getValue().getFullName());
+                }
+            });
+            formGrid.add(officerReportSearchCombo, 1, row);
+            row++;
+
+            selectedOfficerReportLabel = new Label("No officer selected");
+            selectedOfficerReportLabel.setStyle("-fx-text-fill: #999; -fx-font-size: 11px;");
+            formGrid.add(selectedOfficerReportLabel, 1, row);
+            row++;
+        } else {
+            // For regular POLICE user
+            formGrid.add(new Label("Vehicle:"), 0, row);
+            vehicleReportCombo = new ComboBox<>();
+            vehicleReportCombo.setPromptText("Select vehicle");
+            vehicleReportCombo.setPrefWidth(250);
+            formGrid.add(vehicleReportCombo, 1, row);
+            row++;
+        }
+
+        // Separator
+        Separator separator = new Separator();
+        separator.setPadding(new Insets(10, 0, 10, 0));
+        formGrid.add(separator, 0, row, 2, 1);
+        row++;
+
+        // Report Type
+        formGrid.add(new Label("Report Type:"), 0, row);
+        reportTypeCombo = new ComboBox<>();
+        reportTypeCombo.getItems().addAll("Accident", "Theft", "Stolen Vehicle");
+        reportTypeCombo.setPrefWidth(200);
+        formGrid.add(reportTypeCombo, 1, row);
+        row++;
+
+        // Description
+        formGrid.add(new Label("Description:"), 0, row);
+        txtReportDesc = new TextArea();
+        txtReportDesc.setPromptText("Enter incident details...");
+        txtReportDesc.setPrefRowCount(3);
+        txtReportDesc.setPrefWidth(280);
+        txtReportDesc.setWrapText(true);
+        formGrid.add(txtReportDesc, 1, row);
+        row++;
+
+        // Submit Button
+        Button btnSubmit = new Button("Add Police Report");
+        btnSubmit.setStyle("-fx-background-color: #1d3557; -fx-text-fill: white; -fx-font-weight: 500; -fx-padding: 10 20; -fx-background-radius: 6; -fx-cursor: hand;");
+        btnSubmit.setOnMouseEntered(e -> btnSubmit.setStyle("-fx-background-color: #457b9d; -fx-text-fill: white; -fx-font-weight: 500; -fx-padding: 10 20; -fx-background-radius: 6; -fx-cursor: hand;"));
+        btnSubmit.setOnMouseExited(e -> btnSubmit.setStyle("-fx-background-color: #1d3557; -fx-text-fill: white; -fx-font-weight: 500; -fx-padding: 10 20; -fx-background-radius: 6; -fx-cursor: hand;"));
+        btnSubmit.setOnAction(e -> handleAddReport());
+
+        HBox buttonBox = new HBox(btnSubmit);
+        buttonBox.setAlignment(Pos.CENTER);
+        buttonBox.setPadding(new Insets(15, 0, 5, 0));
+        formGrid.add(buttonBox, 0, row, 2, 1);
+
+        formPanel.getChildren().add(formGrid);
+        return formPanel;
+    }
+
+    private VBox createViolationsTab() {
+        // Main container with 40/60 split
+        HBox mainContainer = new HBox(20);
+        mainContainer.setPadding(new Insets(20));
+        mainContainer.setAlignment(Pos.TOP_CENTER);
+
+        // LEFT SIDE (40%) - Form
+        VBox leftPanel = createViolationLeftPanel();
+
+        // RIGHT SIDE (60%) - Table
+        VBox rightPanel = createViolationRightPanel();
+
+        leftPanel.setPrefWidth(400);
+        rightPanel.setPrefWidth(600);
+        HBox.setHgrow(rightPanel, Priority.ALWAYS);
+
+        mainContainer.getChildren().addAll(leftPanel, rightPanel);
+
+        loadViolations();
+
+        return new VBox(mainContainer);
+    }
+
+    private VBox createViolationLeftPanel() {
+        VBox leftPanel = new VBox(15);
+        leftPanel.setStyle("-fx-background-color: white; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 8, 0, 0, 2);");
+        leftPanel.setPadding(new Insets(20));
+
+        Label formTitle = new Label("Add New Violation");
+        formTitle.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #1f2937;");
+
+        VBox formPanel = createViolationFormPanel();
+
+        leftPanel.getChildren().addAll(formTitle, formPanel);
+
+        return leftPanel;
+    }
+
+    private VBox createViolationRightPanel() {
+        VBox rightPanel = new VBox(10);
+        rightPanel.setStyle("-fx-background-color: white; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 8, 0, 0, 2);");
+        rightPanel.setPadding(new Insets(15));
+
+        Label tableTitle = new Label("Violations");
+        tableTitle.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #1f2937;");
+
+        violationTable = new TableView<>();
+        violationTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        violationTable.setPlaceholder(new Label("No violations found"));
+        createViolationColumns();
+
+        VBox.setVgrow(violationTable, Priority.ALWAYS);
+
+        rightPanel.getChildren().addAll(tableTitle, violationTable);
+
+        return rightPanel;
+    }
+
+    private VBox createViolationFormPanel() {
+        VBox formPanel = new VBox(12);
+
+        GridPane formGrid = new GridPane();
+        formGrid.setHgap(12);
+        formGrid.setVgap(10);
+        formGrid.setPadding(new Insets(10, 0, 0, 0));
+
+        int row = 0;
+
+        if (currentUser.getRole().equals("ADMIN")) {
+            // Vehicle Search Section
+            formGrid.add(new Label("Vehicle:"), 0, row);
+            HBox vehicleSearchBox = new HBox(8);
+            txtSearchVehicleViolation = new TextField();
+            txtSearchVehicleViolation.setPromptText("Enter registration number");
+            txtSearchVehicleViolation.setPrefWidth(180);
+            Button btnSearchVehicle = new Button("Search");
+            btnSearchVehicle.setStyle("-fx-background-color: #1d3557; -fx-text-fill: white; -fx-padding: 6 12; -fx-background-radius: 6;");
+            btnSearchVehicle.setOnAction(e -> searchVehicleForViolation());
+            vehicleSearchBox.getChildren().addAll(txtSearchVehicleViolation, btnSearchVehicle);
+            formGrid.add(vehicleSearchBox, 1, row);
+            row++;
+
+            formGrid.add(new Label("Select:"), 0, row);
+            vehicleViolationSearchCombo = new ComboBox<>();
+            vehicleViolationSearchCombo.setPromptText("Select from results");
+            vehicleViolationSearchCombo.setPrefWidth(250);
+            vehicleViolationSearchCombo.setVisible(false);
+            vehicleViolationSearchCombo.setOnAction(e -> {
+                if (vehicleViolationSearchCombo.getValue() != null) {
+                    selectedVehicleViolationLabel.setText("Selected: " + vehicleViolationSearchCombo.getValue().getRegistrationNumber());
+                }
+            });
+            formGrid.add(vehicleViolationSearchCombo, 1, row);
+            row++;
+
+            selectedVehicleViolationLabel = new Label("No vehicle selected");
+            selectedVehicleViolationLabel.setStyle("-fx-text-fill: #999; -fx-font-size: 11px;");
+            formGrid.add(selectedVehicleViolationLabel, 1, row);
+            row++;
+
+            // Officer Search Section
+            formGrid.add(new Label("Officer:"), 0, row);
+            HBox officerSearchBox = new HBox(8);
+            txtSearchOfficerViolation = new TextField();
+            txtSearchOfficerViolation.setPromptText("Enter officer name");
+            txtSearchOfficerViolation.setPrefWidth(180);
+            Button btnSearchOfficer = new Button("Search");
+            btnSearchOfficer.setStyle("-fx-background-color: #1d3557; -fx-text-fill: white; -fx-padding: 6 12; -fx-background-radius: 6;");
+            btnSearchOfficer.setOnAction(e -> searchOfficerForViolation());
+            officerSearchBox.getChildren().addAll(txtSearchOfficerViolation, btnSearchOfficer);
+            formGrid.add(officerSearchBox, 1, row);
+            row++;
+
+            formGrid.add(new Label("Select:"), 0, row);
+            officerViolationSearchCombo = new ComboBox<>();
+            officerViolationSearchCombo.setPromptText("Select from results");
+            officerViolationSearchCombo.setPrefWidth(250);
+            officerViolationSearchCombo.setVisible(false);
+            officerViolationSearchCombo.setOnAction(e -> {
+                if (officerViolationSearchCombo.getValue() != null) {
+                    selectedOfficerViolationLabel.setText("Selected: " + officerViolationSearchCombo.getValue().getFullName());
+                }
+            });
+            formGrid.add(officerViolationSearchCombo, 1, row);
+            row++;
+
+            selectedOfficerViolationLabel = new Label("No officer selected");
+            selectedOfficerViolationLabel.setStyle("-fx-text-fill: #999; -fx-font-size: 11px;");
+            formGrid.add(selectedOfficerViolationLabel, 1, row);
+            row++;
+        } else {
+            // For regular POLICE user
+            formGrid.add(new Label("Vehicle:"), 0, row);
+            vehicleViolationCombo = new ComboBox<>();
+            vehicleViolationCombo.setPromptText("Select vehicle");
+            vehicleViolationCombo.setPrefWidth(250);
+            formGrid.add(vehicleViolationCombo, 1, row);
+            row++;
+        }
+
+        // Separator
+        Separator separator = new Separator();
+        separator.setPadding(new Insets(10, 0, 10, 0));
+        formGrid.add(separator, 0, row, 2, 1);
+        row++;
+
+        // Violation Type
+        formGrid.add(new Label("Violation Type:"), 0, row);
+        violationTypeCombo = new ComboBox<>();
+        violationTypeCombo.getItems().addAll("Speeding", "No seatbelt", "Running red light", "Drunk driving", "No license", "Overloading");
+        violationTypeCombo.setPrefWidth(200);
+        formGrid.add(violationTypeCombo, 1, row);
+        row++;
+
+        // Fine Amount
+        formGrid.add(new Label("Fine Amount (M):"), 0, row);
+        txtFineAmount = new TextField();
+        txtFineAmount.setPromptText("Enter amount");
+        txtFineAmount.setPrefWidth(150);
+        formGrid.add(txtFineAmount, 1, row);
+        row++;
+
+        // Submit Button
+        Button btnSubmit = new Button("Add Violation");
+        btnSubmit.setStyle("-fx-background-color: #1d3557; -fx-text-fill: white; -fx-font-weight: 500; -fx-padding: 10 20; -fx-background-radius: 6; -fx-cursor: hand;");
+        btnSubmit.setOnMouseEntered(e -> btnSubmit.setStyle("-fx-background-color: #457b9d; -fx-text-fill: white; -fx-font-weight: 500; -fx-padding: 10 20; -fx-background-radius: 6; -fx-cursor: hand;"));
+        btnSubmit.setOnMouseExited(e -> btnSubmit.setStyle("-fx-background-color: #1d3557; -fx-text-fill: white; -fx-font-weight: 500; -fx-padding: 10 20; -fx-background-radius: 6; -fx-cursor: hand;"));
+        btnSubmit.setOnAction(e -> handleAddViolation());
+
+        HBox buttonBox = new HBox(btnSubmit);
+        buttonBox.setAlignment(Pos.CENTER);
+        buttonBox.setPadding(new Insets(15, 0, 5, 0));
+        formGrid.add(buttonBox, 0, row, 2, 1);
+
+        formPanel.getChildren().add(formGrid);
+        return formPanel;
     }
 
     private void createReportColumns() {
         TableColumn<PoliceReport, Integer> idCol = new TableColumn<>("ID");
         idCol.setCellValueFactory(new PropertyValueFactory<>("reportId"));
+        idCol.setPrefWidth(50);
 
         TableColumn<PoliceReport, String> vehicleCol = new TableColumn<>("Vehicle");
         vehicleCol.setCellValueFactory(new PropertyValueFactory<>("vehicleReg"));
+        vehicleCol.setPrefWidth(120);
 
         TableColumn<PoliceReport, LocalDate> dateCol = new TableColumn<>("Date");
         dateCol.setCellValueFactory(new PropertyValueFactory<>("reportDate"));
+        dateCol.setPrefWidth(100);
 
         TableColumn<PoliceReport, String> typeCol = new TableColumn<>("Type");
         typeCol.setCellValueFactory(new PropertyValueFactory<>("reportType"));
+        typeCol.setPrefWidth(100);
 
         TableColumn<PoliceReport, String> descCol = new TableColumn<>("Description");
         descCol.setCellValueFactory(new PropertyValueFactory<>("description"));
+        descCol.setPrefWidth(250);
 
         TableColumn<PoliceReport, String> officerCol = new TableColumn<>("Officer");
         officerCol.setCellValueFactory(new PropertyValueFactory<>("officerName"));
+        officerCol.setPrefWidth(150);
 
         reportTable.getColumns().addAll(idCol, vehicleCol, dateCol, typeCol, descCol, officerCol);
-    }
-
-    private VBox createReportForm() {
-        VBox formPanel = new VBox(10);
-        formPanel.setPadding(new Insets(10));
-        formPanel.setStyle("-fx-border-color: #ddd; -fx-border-radius: 5; -fx-background-color: #fafafa;");
-
-        Label formTitle = new Label("Add New Police Report");
-        formTitle.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
-
-        GridPane formGrid = new GridPane();
-        formGrid.setHgap(10);
-        formGrid.setVgap(8);
-
-        int row = 0;
-
-        if (currentUser.getRole().equals("ADMIN")) {
-            // Vehicle search for ADMIN
-            formGrid.add(new Label("Vehicle (Search):"), 0, row);
-            txtSearchVehicleReport = new TextField();
-            txtSearchVehicleReport.setPromptText("Enter registration number to search");
-            txtSearchVehicleReport.setPrefWidth(180);
-            Button btnSearchVehicle = new Button("Search");
-            btnSearchVehicle.setOnAction(e -> searchVehicleForReport());
-            HBox searchVehicleBox = new HBox(5, txtSearchVehicleReport, btnSearchVehicle);
-            formGrid.add(searchVehicleBox, 1, row++);
-
-            formGrid.add(new Label("Select Vehicle:"), 0, row);
-            vehicleReportSearchCombo = new ComboBox<>();
-            vehicleReportSearchCombo.setPromptText("Search results will appear here");
-            vehicleReportSearchCombo.setPrefWidth(300);
-            vehicleReportSearchCombo.setVisible(false);
-            formGrid.add(vehicleReportSearchCombo, 1, row++);
-
-            selectedVehicleReportLabel = new Label("No vehicle selected");
-            selectedVehicleReportLabel.setStyle("-fx-text-fill: #666; -fx-font-size: 11px;");
-            formGrid.add(selectedVehicleReportLabel, 1, row++);
-
-            // Officer search for ADMIN
-            formGrid.add(new Label("Officer (Search):"), 0, row);
-            txtSearchOfficerReport = new TextField();
-            txtSearchOfficerReport.setPromptText("Enter officer name to search");
-            txtSearchOfficerReport.setPrefWidth(180);
-            Button btnSearchOfficer = new Button("Search");
-            btnSearchOfficer.setOnAction(e -> searchOfficerForReport());
-            HBox searchOfficerBox = new HBox(5, txtSearchOfficerReport, btnSearchOfficer);
-            formGrid.add(searchOfficerBox, 1, row++);
-
-            formGrid.add(new Label("Select Officer:"), 0, row);
-            officerReportSearchCombo = new ComboBox<>();
-            officerReportSearchCombo.setPromptText("Search results will appear here");
-            officerReportSearchCombo.setPrefWidth(300);
-            officerReportSearchCombo.setVisible(false);
-            formGrid.add(officerReportSearchCombo, 1, row++);
-
-            selectedOfficerReportLabel = new Label("No officer selected");
-            selectedOfficerReportLabel.setStyle("-fx-text-fill: #666; -fx-font-size: 11px;");
-            formGrid.add(selectedOfficerReportLabel, 1, row++);
-        } else {
-            // For regular POLICE user
-            formGrid.add(new Label("Vehicle:"), 0, row);
-            vehicleReportCombo = new ComboBox<>();
-            vehicleReportCombo.setPrefWidth(250);
-            formGrid.add(vehicleReportCombo, 1, row++);
-        }
-
-        formGrid.add(new Label("Report Type:"), 0, row);
-        reportTypeCombo = new ComboBox<>();
-        reportTypeCombo.getItems().addAll("Accident", "Theft", "Stolen Vehicle");
-        formGrid.add(reportTypeCombo, 1, row++);
-
-        formGrid.add(new Label("Description:"), 0, row);
-        txtReportDesc = new TextArea();
-        txtReportDesc.setPrefRowCount(3);
-        txtReportDesc.setPrefWidth(450);
-        formGrid.add(txtReportDesc, 1, row, 2, 1);
-        row++;
-
-        Button btnSubmit = new Button("Add Report");
-        btnSubmit.setOnAction(e -> handleAddReport());
-
-        formPanel.getChildren().addAll(formTitle, formGrid, btnSubmit);
-
-        return formPanel;
-    }
-
-    private VBox createViolationsTab() {
-        VBox container = new VBox(15);
-
-        // FORM FIRST (at the top)
-        VBox formPanel = createViolationForm();
-
-        // TABLE SECOND (below)
-        violationTable = new TableView<>();
-        violationTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-        createViolationColumns();
-
-        container.getChildren().addAll(formPanel, violationTable);
-
-        loadViolations();
-
-        return container;
     }
 
     private void createViolationColumns() {
         TableColumn<Violation, Integer> idCol = new TableColumn<>("ID");
         idCol.setCellValueFactory(new PropertyValueFactory<>("violationId"));
+        idCol.setPrefWidth(50);
 
         TableColumn<Violation, String> vehicleCol = new TableColumn<>("Vehicle");
         vehicleCol.setCellValueFactory(new PropertyValueFactory<>("vehicleReg"));
+        vehicleCol.setPrefWidth(120);
 
         TableColumn<Violation, LocalDate> dateCol = new TableColumn<>("Date");
         dateCol.setCellValueFactory(new PropertyValueFactory<>("violationDate"));
+        dateCol.setPrefWidth(100);
 
         TableColumn<Violation, String> typeCol = new TableColumn<>("Type");
         typeCol.setCellValueFactory(new PropertyValueFactory<>("violationType"));
+        typeCol.setPrefWidth(120);
 
         TableColumn<Violation, Double> fineCol = new TableColumn<>("Fine Amount");
         fineCol.setCellValueFactory(new PropertyValueFactory<>("fineAmount"));
+        fineCol.setPrefWidth(100);
 
         TableColumn<Violation, String> officerCol = new TableColumn<>("Officer");
         officerCol.setCellValueFactory(new PropertyValueFactory<>("officerName"));
+        officerCol.setPrefWidth(150);
 
         violationTable.getColumns().addAll(idCol, vehicleCol, dateCol, typeCol, fineCol, officerCol);
-    }
-
-    private VBox createViolationForm() {
-        VBox formPanel = new VBox(10);
-        formPanel.setPadding(new Insets(10));
-        formPanel.setStyle("-fx-border-color: #ddd; -fx-border-radius: 5; -fx-background-color: #fafafa;");
-
-        Label formTitle = new Label("Add New Violation");
-        formTitle.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
-
-        GridPane formGrid = new GridPane();
-        formGrid.setHgap(10);
-        formGrid.setVgap(8);
-
-        int row = 0;
-
-        if (currentUser.getRole().equals("ADMIN")) {
-            // Vehicle search for ADMIN
-            formGrid.add(new Label("Vehicle (Search):"), 0, row);
-            txtSearchVehicleViolation = new TextField();
-            txtSearchVehicleViolation.setPromptText("Enter registration number to search");
-            txtSearchVehicleViolation.setPrefWidth(180);
-            Button btnSearchVehicle = new Button("Search");
-            btnSearchVehicle.setOnAction(e -> searchVehicleForViolation());
-            HBox searchVehicleBox = new HBox(5, txtSearchVehicleViolation, btnSearchVehicle);
-            formGrid.add(searchVehicleBox, 1, row++);
-
-            formGrid.add(new Label("Select Vehicle:"), 0, row);
-            vehicleViolationSearchCombo = new ComboBox<>();
-            vehicleViolationSearchCombo.setPromptText("Search results will appear here");
-            vehicleViolationSearchCombo.setPrefWidth(300);
-            vehicleViolationSearchCombo.setVisible(false);
-            formGrid.add(vehicleViolationSearchCombo, 1, row++);
-
-            selectedVehicleViolationLabel = new Label("No vehicle selected");
-            selectedVehicleViolationLabel.setStyle("-fx-text-fill: #666; -fx-font-size: 11px;");
-            formGrid.add(selectedVehicleViolationLabel, 1, row++);
-
-            // Officer search for ADMIN
-            formGrid.add(new Label("Officer (Search):"), 0, row);
-            txtSearchOfficerViolation = new TextField();
-            txtSearchOfficerViolation.setPromptText("Enter officer name to search");
-            txtSearchOfficerViolation.setPrefWidth(180);
-            Button btnSearchOfficer = new Button("Search");
-            btnSearchOfficer.setOnAction(e -> searchOfficerForViolation());
-            HBox searchOfficerBox = new HBox(5, txtSearchOfficerViolation, btnSearchOfficer);
-            formGrid.add(searchOfficerBox, 1, row++);
-
-            formGrid.add(new Label("Select Officer:"), 0, row);
-            officerViolationSearchCombo = new ComboBox<>();
-            officerViolationSearchCombo.setPromptText("Search results will appear here");
-            officerViolationSearchCombo.setPrefWidth(300);
-            officerViolationSearchCombo.setVisible(false);
-            formGrid.add(officerViolationSearchCombo, 1, row++);
-
-            selectedOfficerViolationLabel = new Label("No officer selected");
-            selectedOfficerViolationLabel.setStyle("-fx-text-fill: #666; -fx-font-size: 11px;");
-            formGrid.add(selectedOfficerViolationLabel, 1, row++);
-        } else {
-            // For regular POLICE user
-            formGrid.add(new Label("Vehicle:"), 0, row);
-            vehicleViolationCombo = new ComboBox<>();
-            vehicleViolationCombo.setPrefWidth(250);
-            formGrid.add(vehicleViolationCombo, 1, row++);
-        }
-
-        formGrid.add(new Label("Violation Type:"), 0, row);
-        violationTypeCombo = new ComboBox<>();
-        violationTypeCombo.getItems().addAll("Speeding", "No seatbelt", "Running red light", "Drunk driving", "No license", "Overloading");
-        formGrid.add(violationTypeCombo, 1, row++);
-
-        formGrid.add(new Label("Fine Amount:"), 0, row);
-        txtFineAmount = new TextField();
-        formGrid.add(txtFineAmount, 1, row++);
-
-        Button btnSubmit = new Button("Add Violation");
-        btnSubmit.setOnAction(e -> handleAddViolation());
-
-        formPanel.getChildren().addAll(formTitle, formGrid, btnSubmit);
-
-        return formPanel;
     }
 
     private void searchVehicleForReport() {
@@ -366,13 +530,6 @@ public class PoliceController {
             });
             vehicleReportSearchCombo.setVisible(true);
             vehicleReportSearchCombo.setPromptText("Select vehicle (" + vehicles.size() + " found)");
-
-            vehicleReportSearchCombo.setOnAction(e -> {
-                Vehicle selected = vehicleReportSearchCombo.getValue();
-                if (selected != null) {
-                    selectedVehicleReportLabel.setText("Selected: " + selected.getRegistrationNumber());
-                }
-            });
         }
     }
 
@@ -419,13 +576,6 @@ public class PoliceController {
             });
             officerReportSearchCombo.setVisible(true);
             officerReportSearchCombo.setPromptText("Select officer (" + officers.size() + " found)");
-
-            officerReportSearchCombo.setOnAction(e -> {
-                User selected = officerReportSearchCombo.getValue();
-                if (selected != null) {
-                    selectedOfficerReportLabel.setText("Selected: " + selected.getFullName());
-                }
-            });
         }
     }
 
@@ -474,13 +624,6 @@ public class PoliceController {
             });
             vehicleViolationSearchCombo.setVisible(true);
             vehicleViolationSearchCombo.setPromptText("Select vehicle (" + vehicles.size() + " found)");
-
-            vehicleViolationSearchCombo.setOnAction(e -> {
-                Vehicle selected = vehicleViolationSearchCombo.getValue();
-                if (selected != null) {
-                    selectedVehicleViolationLabel.setText("Selected: " + selected.getRegistrationNumber());
-                }
-            });
         }
     }
 
@@ -527,13 +670,6 @@ public class PoliceController {
             });
             officerViolationSearchCombo.setVisible(true);
             officerViolationSearchCombo.setPromptText("Select officer (" + officers.size() + " found)");
-
-            officerViolationSearchCombo.setOnAction(e -> {
-                User selected = officerViolationSearchCombo.getValue();
-                if (selected != null) {
-                    selectedOfficerViolationLabel.setText("Selected: " + selected.getFullName());
-                }
-            });
         }
     }
 

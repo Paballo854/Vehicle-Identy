@@ -5,6 +5,7 @@ import com.example.vehicleidentificationsystem.services.VehicleService;
 import com.example.vehicleidentificationsystem.utils.AlertUtils;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.*;
@@ -37,14 +38,9 @@ public class CustomerController {
     public VBox createView(User user) {
         this.currentUser = user;
 
-        VBox root = new VBox(15);
-        root.setPadding(new Insets(20));
-
-        Label title = new Label("Customer Portal");
-        title.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
-
         TabPane tabPane = new TabPane();
         tabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
+        tabPane.setStyle("-fx-font-size: 13px;");
 
         String vehiclesTabName = currentUser.getRole().equals("ADMIN") ? "Vehicles" : "My Vehicles";
         String queriesTabName = currentUser.getRole().equals("ADMIN") ? "Queries" : "My Queries";
@@ -64,31 +60,28 @@ public class CustomerController {
 
         tabPane.getTabs().addAll(vehiclesTab, serviceHistoryTab, queriesTab);
 
-        root.getChildren().addAll(title, tabPane);
-
-        return root;
+        return new VBox(tabPane);
     }
 
     private VBox createVehiclesTab() {
         VBox container = new VBox(15);
-        container.setPadding(new Insets(10));
+        container.setPadding(new Insets(20));
+        container.setStyle("-fx-background-color: white; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 8, 0, 0, 2);");
 
         Label welcomeLabel = new Label("Welcome " + currentUser.getFullName() + "!");
-        welcomeLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold;");
+        welcomeLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #1f2937;");
 
         String vehiclesTitle = currentUser.getRole().equals("ADMIN") ? "Vehicles" : "My Vehicles";
-        String message;
-        if (currentUser.getRole().equals("ADMIN")) {
-            message = vehiclesTitle + " - Below are all vehicles in the system.";
-        } else {
-            message = vehiclesTitle + " - Below are the vehicles registered under your name.";
-        }
+        String message = currentUser.getRole().equals("ADMIN") ? vehiclesTitle + " - All vehicles in the system" : vehiclesTitle + " - Vehicles registered under your name";
         Label infoLabel = new Label(message);
+        infoLabel.setStyle("-fx-text-fill: #6b7280; -fx-font-size: 12px;");
 
         vehicleTable = new TableView<>();
         vehicleTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         vehicleTable.setPlaceholder(new Label("No vehicles found"));
         createVehicleColumns();
+
+        VBox.setVgrow(vehicleTable, Priority.ALWAYS);
 
         container.getChildren().addAll(welcomeLabel, infoLabel, vehicleTable);
 
@@ -100,36 +93,44 @@ public class CustomerController {
     private void createVehicleColumns() {
         TableColumn<Vehicle, Integer> idCol = new TableColumn<>("ID");
         idCol.setCellValueFactory(new PropertyValueFactory<>("vehicleId"));
+        idCol.setPrefWidth(50);
 
         TableColumn<Vehicle, String> regCol = new TableColumn<>("Registration");
         regCol.setCellValueFactory(new PropertyValueFactory<>("registrationNumber"));
+        regCol.setPrefWidth(130);
 
         TableColumn<Vehicle, String> makeCol = new TableColumn<>("Make");
         makeCol.setCellValueFactory(new PropertyValueFactory<>("make"));
+        makeCol.setPrefWidth(100);
 
         TableColumn<Vehicle, String> modelCol = new TableColumn<>("Model");
         modelCol.setCellValueFactory(new PropertyValueFactory<>("model"));
+        modelCol.setPrefWidth(100);
 
         TableColumn<Vehicle, Integer> yearCol = new TableColumn<>("Year");
         yearCol.setCellValueFactory(new PropertyValueFactory<>("year"));
+        yearCol.setPrefWidth(80);
 
         vehicleTable.getColumns().addAll(idCol, regCol, makeCol, modelCol, yearCol);
     }
 
     private VBox createServiceHistoryTab() {
         VBox container = new VBox(15);
-        container.setPadding(new Insets(10));
+        container.setPadding(new Insets(20));
+        container.setStyle("-fx-background-color: white; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 8, 0, 0, 2);");
 
         Label titleLabel = new Label("Service History");
-        titleLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold;");
+        titleLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #1f2937;");
 
-        Label infoLabel = new Label("Below are all service records for vehicles registered under your name.");
-        infoLabel.setStyle("-fx-text-fill: #666; -fx-font-size: 12px;");
+        Label infoLabel = new Label("Complete service records for your vehicles");
+        infoLabel.setStyle("-fx-text-fill: #6b7280; -fx-font-size: 12px;");
 
         serviceHistoryTable = new TableView<>();
         serviceHistoryTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         serviceHistoryTable.setPlaceholder(new Label("No service records found for your vehicles"));
         createServiceHistoryColumns();
+
+        VBox.setVgrow(serviceHistoryTable, Priority.ALWAYS);
 
         container.getChildren().addAll(titleLabel, infoLabel, serviceHistoryTable);
 
@@ -171,108 +172,168 @@ public class CustomerController {
     }
 
     private VBox createQueriesTab() {
-        VBox container = new VBox(15);
-        container.setPadding(new Insets(10));
+        // Main container with 40/60 split
+        HBox mainContainer = new HBox(20);
+        mainContainer.setPadding(new Insets(20));
+        mainContainer.setAlignment(Pos.TOP_CENTER);
 
-        VBox formPanel = createQueryForm();
+        // LEFT SIDE (40%) - Submit Query Form
+        VBox leftPanel = createLeftQueryPanel();
 
-        String queriesTitle = currentUser.getRole().equals("ADMIN") ? "Queries" : "My Queries";
-        Label queriesLabel = new Label(queriesTitle);
-        queriesLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold;");
+        // RIGHT SIDE (60%) - My Queries Table
+        VBox rightPanel = createRightQueryPanel();
+
+        leftPanel.setPrefWidth(400);
+        rightPanel.setPrefWidth(600);
+        HBox.setHgrow(rightPanel, Priority.ALWAYS);
+
+        mainContainer.getChildren().addAll(leftPanel, rightPanel);
+
+        loadCustomerQueries();
+
+        return new VBox(mainContainer);
+    }
+
+    private VBox createLeftQueryPanel() {
+        VBox leftPanel = new VBox(15);
+        leftPanel.setStyle("-fx-background-color: white; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 8, 0, 0, 2);");
+        leftPanel.setPadding(new Insets(20));
+
+        Label formTitle = new Label("Submit New Query");
+        formTitle.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #1f2937;");
+
+        VBox formPanel = createQueryFormPanel();
+
+        leftPanel.getChildren().addAll(formTitle, formPanel);
+
+        return leftPanel;
+    }
+
+    private VBox createRightQueryPanel() {
+        VBox rightPanel = new VBox(10);
+        rightPanel.setStyle("-fx-background-color: white; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 8, 0, 0, 2);");
+        rightPanel.setPadding(new Insets(15));
+
+        Label tableTitle = new Label("My Queries");
+        tableTitle.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #1f2937;");
 
         queryTable = new TableView<>();
         queryTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         queryTable.setPlaceholder(new Label("No queries submitted yet"));
         createQueryColumns();
 
-        container.getChildren().addAll(formPanel, queriesLabel, queryTable);
+        VBox.setVgrow(queryTable, Priority.ALWAYS);
 
-        loadCustomerQueries();
+        rightPanel.getChildren().addAll(tableTitle, queryTable);
 
-        return container;
+        return rightPanel;
     }
 
-    private VBox createQueryForm() {
-        VBox formPanel = new VBox(10);
-        formPanel.setPadding(new Insets(10));
-        formPanel.setStyle("-fx-border-color: #ddd; -fx-border-radius: 5; -fx-background-color: #fafafa;");
-
-        Label formTitle = new Label("Submit New Query");
-        formTitle.setStyle("-fx-font-weight: bold; -fx-font-size: 14px");
+    private VBox createQueryFormPanel() {
+        VBox formPanel = new VBox(12);
 
         GridPane formGrid = new GridPane();
-        formGrid.setHgap(10);
-        formGrid.setVgap(8);
+        formGrid.setHgap(12);
+        formGrid.setVgap(10);
+        formGrid.setPadding(new Insets(10, 0, 0, 0));
 
         int row = 0;
 
+        // Search Vehicle Section
         formGrid.add(new Label("Search Vehicle:"), 0, row);
+        HBox searchBox = new HBox(8);
         txtSearchRegistration = new TextField();
         txtSearchRegistration.setPromptText("Enter registration number");
-        txtSearchRegistration.setPrefWidth(200);
+        txtSearchRegistration.setPrefWidth(180);
         Button btnSearch = new Button("Search");
+        btnSearch.setStyle("-fx-background-color: #1d3557; -fx-text-fill: white; -fx-padding: 6 12; -fx-background-radius: 6;");
         btnSearch.setOnAction(e -> searchVehicle());
-        formGrid.add(txtSearchRegistration, 1, row);
-        formGrid.add(btnSearch, 2, row++);
-
-        formGrid.add(new Label("Select Vehicle:"), 0, row);
-        searchResultCombo = new ComboBox<>();
-        searchResultCombo.setPromptText("Search results will appear here");
-        searchResultCombo.setPrefWidth(300);
-        searchResultCombo.setVisible(false);
-        formGrid.add(searchResultCombo, 1, row, 2, 1);
+        searchBox.getChildren().addAll(txtSearchRegistration, btnSearch);
+        formGrid.add(searchBox, 1, row);
         row++;
 
+        formGrid.add(new Label("Select:"), 0, row);
+        searchResultCombo = new ComboBox<>();
+        searchResultCombo.setPromptText("Select from results");
+        searchResultCombo.setPrefWidth(250);
+        searchResultCombo.setVisible(false);
+        formGrid.add(searchResultCombo, 1, row);
+        row++;
+
+        // Separator
+        Separator separator = new Separator();
+        separator.setPadding(new Insets(10, 0, 10, 0));
+        formGrid.add(separator, 0, row, 2, 1);
+        row++;
+
+        // Query Type
         formGrid.add(new Label("Query Type:"), 0, row);
         queryTypeCombo = new ComboBox<>();
         queryTypeCombo.getItems().addAll("WORKSHOP", "INSURANCE", "POLICE");
         queryTypeCombo.setValue("WORKSHOP");
-        queryTypeCombo.setPrefWidth(150);
+        queryTypeCombo.setPrefWidth(180);
         queryTypeCombo.setOnAction(e -> updateTargetSelection());
-        formGrid.add(queryTypeCombo, 1, row++);
+        formGrid.add(queryTypeCombo, 1, row);
+        row++;
 
-        formGrid.add(new Label("Select Workshop:"), 0, row);
+        // Workshop Selection (hidden by default)
+        formGrid.add(new Label("Workshop:"), 0, row);
         workshopCombo = new ComboBox<>();
         workshopCombo.setPromptText("Select workshop");
-        workshopCombo.setPrefWidth(300);
+        workshopCombo.setPrefWidth(250);
         workshopCombo.setVisible(false);
         formGrid.add(workshopCombo, 1, row);
+
         workshopLabel = new Label("");
         workshopLabel.setStyle("-fx-text-fill: #666; -fx-font-size: 11px;");
         workshopLabel.setVisible(false);
         formGrid.add(workshopLabel, 1, ++row);
         row++;
 
-        formGrid.add(new Label("Select Insurance Company:"), 0, row);
+        // Insurance Selection (hidden by default)
+        formGrid.add(new Label("Insurance:"), 0, row);
         insuranceCombo = new ComboBox<>();
         insuranceCombo.setPromptText("Select insurance company");
-        insuranceCombo.setPrefWidth(300);
+        insuranceCombo.setPrefWidth(250);
         insuranceCombo.setVisible(false);
         formGrid.add(insuranceCombo, 1, row);
+
         insuranceLabel = new Label("");
         insuranceLabel.setStyle("-fx-text-fill: #666; -fx-font-size: 11px;");
         insuranceLabel.setVisible(false);
         formGrid.add(insuranceLabel, 1, ++row);
         row++;
 
+        // Police Info (hidden by default)
         policeInfo = new Label("Police queries go to the general police department.");
-        policeInfo.setStyle("-fx-text-fill: #666; -fx-font-style: italic;");
+        policeInfo.setStyle("-fx-text-fill: #888; -fx-font-style: italic;");
         policeInfo.setVisible(false);
-        formGrid.add(policeInfo, 1, row++);
-
-        formGrid.add(new Label("Your Question:"), 0, row);
-        txtQueryText = new TextArea();
-        txtQueryText.setPromptText("Enter your question...");
-        txtQueryText.setPrefRowCount(4);
-        txtQueryText.setPrefWidth(450);
-        formGrid.add(txtQueryText, 1, row, 2, 1);
+        formGrid.add(policeInfo, 1, row);
         row++;
 
+        // Question
+        formGrid.add(new Label("Question:"), 0, row);
+        txtQueryText = new TextArea();
+        txtQueryText.setPromptText("Enter your question or concern...");
+        txtQueryText.setPrefRowCount(4);
+        txtQueryText.setPrefWidth(280);
+        txtQueryText.setWrapText(true);
+        formGrid.add(txtQueryText, 1, row);
+        row++;
+
+        // Submit Button
         Button btnSubmit = new Button("Submit Query");
+        btnSubmit.setStyle("-fx-background-color: #1d3557; -fx-text-fill: white; -fx-font-weight: 500; -fx-padding: 10 20; -fx-background-radius: 6; -fx-cursor: hand;");
+        btnSubmit.setOnMouseEntered(e -> btnSubmit.setStyle("-fx-background-color: #457b9d; -fx-text-fill: white; -fx-font-weight: 500; -fx-padding: 10 20; -fx-background-radius: 6; -fx-cursor: hand;"));
+        btnSubmit.setOnMouseExited(e -> btnSubmit.setStyle("-fx-background-color: #1d3557; -fx-text-fill: white; -fx-font-weight: 500; -fx-padding: 10 20; -fx-background-radius: 6; -fx-cursor: hand;"));
         btnSubmit.setOnAction(e -> handleSubmitQuery());
 
-        formPanel.getChildren().addAll(formTitle, formGrid, btnSubmit);
+        HBox buttonBox = new HBox(btnSubmit);
+        buttonBox.setAlignment(Pos.CENTER);
+        buttonBox.setPadding(new Insets(15, 0, 5, 0));
+        formGrid.add(buttonBox, 0, row, 2, 1);
 
+        formPanel.getChildren().add(formGrid);
         return formPanel;
     }
 
@@ -463,13 +524,6 @@ public class CustomerController {
             });
             searchResultCombo.setVisible(true);
             searchResultCombo.setPromptText("Select vehicle (" + vehicles.size() + " found)");
-
-            searchResultCombo.setOnAction(e -> {
-                Vehicle selected = searchResultCombo.getValue();
-                if (selected != null) {
-                    updateTargetSelection();
-                }
-            });
         }
     }
 
@@ -653,6 +707,7 @@ public class CustomerController {
 
             AlertUtils.showInfo("Success", "Your query has been submitted to " + targetName + ".");
 
+            // Reset form
             txtSearchRegistration.clear();
             searchResultCombo.setItems(null);
             searchResultCombo.setVisible(false);
@@ -665,8 +720,8 @@ public class CustomerController {
             workshopLabel.setText("");
             insuranceLabel.setText("");
 
-            workshopCombo.setVisible(true);
-            workshopLabel.setVisible(true);
+            workshopCombo.setVisible(false);
+            workshopLabel.setVisible(false);
             insuranceCombo.setVisible(false);
             insuranceLabel.setVisible(false);
             policeInfo.setVisible(false);

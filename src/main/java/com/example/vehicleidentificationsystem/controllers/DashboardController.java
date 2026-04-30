@@ -2,10 +2,7 @@ package com.example.vehicleidentificationsystem.controllers;
 
 import com.example.vehicleidentificationsystem.MainApp;
 import com.example.vehicleidentificationsystem.models.*;
-import com.example.vehicleidentificationsystem.services.InsuranceService;
-import com.example.vehicleidentificationsystem.services.PoliceService;
-import com.example.vehicleidentificationsystem.services.SessionManager;
-import com.example.vehicleidentificationsystem.services.VehicleService;
+import com.example.vehicleidentificationsystem.services.*;
 import com.example.vehicleidentificationsystem.utils.AlertUtils;
 import javafx.animation.FadeTransition;
 import javafx.application.Platform;
@@ -28,13 +25,18 @@ public class DashboardController {
     private User currentUser;
     private TabPane mainTabPane;
 
+    private final String BG = "#f4f6f9";
+    private final String PRIMARY = "#1d3557";
+    private final String SECONDARY = "#457b9d";
+    private final String TEXT = "#1f2937";
+    private final String MUTED = "#6b7280";
+
     public void show(Stage stage) {
         this.primaryStage = stage;
         this.currentUser = SessionManager.getInstance().getCurrentUser();
 
-        System.out.println("📊 Building dashboard for: " + currentUser.getUsername() + " (Role: " + currentUser.getRole() + ")");
-
         BorderPane root = new BorderPane();
+        root.setStyle("-fx-background-color: " + BG + ";");
 
         VBox topSection = new VBox(0);
         topSection.getChildren().addAll(createMenuBar(), createTopBar());
@@ -43,22 +45,19 @@ public class DashboardController {
         mainTabPane = createTabPane();
         root.setCenter(mainTabPane);
 
-        Scene scene = new Scene(root, 1200, 700);
-
-        primaryStage.setTitle("Vehicle Identification System - Dashboard");
+        Scene scene = new Scene(root, 1280, 800);
+        primaryStage.setTitle("Vehicle Identification System");
         primaryStage.setScene(scene);
+        primaryStage.setMinWidth(1024);
+        primaryStage.setMinHeight(768);
         primaryStage.show();
 
-        FadeTransition fade = new FadeTransition(Duration.seconds(0.5), root);
-        fade.setFromValue(0);
-        fade.setToValue(1);
-        fade.play();
-
-        System.out.println("✅ Dashboard displayed successfully!");
+        fadeIn(root);
     }
 
     private MenuBar createMenuBar() {
         MenuBar menuBar = new MenuBar();
+        menuBar.setStyle("-fx-background-color: white; -fx-border-color: #e5e7eb; -fx-border-width: 0 0 1 0;");
 
         Menu fileMenu = new Menu("File");
 
@@ -90,56 +89,38 @@ public class DashboardController {
         return menuBar;
     }
 
-    private void refreshDashboard() {
-        mainTabPane.getTabs().clear();
-        mainTabPane = createTabPane();
-        BorderPane root = (BorderPane) primaryStage.getScene().getRoot();
-        root.setCenter(mainTabPane);
-        AlertUtils.showInfo("Refreshed", "Dashboard has been refreshed.");
-    }
-
     private void showAboutDialog() {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("About Vehicle Identification System");
-        alert.setHeaderText("Vehicle Identification System (VIS)");
-        alert.setContentText("Version: 1.0\n\n" +
-                "A comprehensive system for managing vehicles,\n" +
-                "service records, police reports, and insurance.\n\n" +
-                "© 2024 - All Rights Reserved");
+        alert.setTitle("About");
+        alert.setHeaderText("Vehicle Identification System");
+        alert.setContentText("Version 2.0\n\nA comprehensive system for managing vehicles,\nservice records, police reports, and insurance.");
         alert.showAndWait();
     }
 
     private void showHelpDialog() {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("Help");
-        alert.setHeaderText("Vehicle Identification System Help");
-        alert.setContentText("Modules:\n\n" +
-                "• Workshop Module - Manage vehicles and service records\n" +
-                "• Police Module - File accident/theft reports and violations\n" +
-                "• Insurance Module - Manage vehicle insurance policies\n" +
-                "• Customer Module - View vehicles and submit queries\n" +
-                "• User Management - Manage system users\n\n" +
-                "Keyboard Shortcuts:\n" +
-                "• Ctrl+R - Refresh dashboard\n" +
-                "• Ctrl+Q - Exit application\n" +
-                "• F1 - Help");
+        alert.setHeaderText("Help");
+        alert.setContentText("Modules:\n\n• Workshop Module - Manage vehicles and service records\n• Police Module - File reports and violations\n• Insurance Module - Manage insurance policies\n• Customer Portal - View vehicles and submit queries\n• User Management - Manage system users\n\nShortcuts:\n• Ctrl+R - Refresh\n• Ctrl+Q - Exit\n• F1 - Help");
         alert.showAndWait();
     }
 
     private HBox createTopBar() {
-        HBox topBar = new HBox(10);
-        topBar.setPadding(new Insets(10, 20, 10, 20));
-        topBar.setAlignment(Pos.CENTER_LEFT);
+        HBox bar = new HBox(15);
+        bar.setPadding(new Insets(12, 24, 12, 24));
+        bar.setAlignment(Pos.CENTER_LEFT);
+        bar.setStyle("-fx-background-color: white; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 10, 0, 0, 2);");
 
         TabPane navTabPane = new TabPane();
         navTabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
+        navTabPane.setStyle("-fx-background-color: transparent;");
         HBox.setHgrow(navTabPane, Priority.ALWAYS);
 
         String role = currentUser.getRole();
 
-        // Home Tab - EVERYONE sees this
         Tab homeNavTab = new Tab("Home");
         homeNavTab.setClosable(false);
+        homeNavTab.setStyle("-fx-font-size: 13px;");
         homeNavTab.setOnSelectionChanged(e -> {
             if (homeNavTab.isSelected() && mainTabPane != null) {
                 mainTabPane.getSelectionModel().select(0);
@@ -147,106 +128,54 @@ public class DashboardController {
         });
         navTabPane.getTabs().add(homeNavTab);
 
-        // For CUSTOMER role: ONLY show Home and Customer Module
         if (role.equals("CUSTOMER")) {
-            // Customer Module Tab
             Tab customerNavTab = new Tab("Customer Portal");
             customerNavTab.setClosable(false);
+            customerNavTab.setStyle("-fx-font-size: 13px;");
             customerNavTab.setOnSelectionChanged(e -> {
                 if (customerNavTab.isSelected() && mainTabPane != null) {
                     mainTabPane.getSelectionModel().select(1);
                 }
             });
             navTabPane.getTabs().add(customerNavTab);
-        }
-        // For ADMIN role: Show all tabs
-        else if (role.equals("ADMIN")) {
-            // Workshop Module Tab
-            Tab workshopNavTab = new Tab("Workshop Module");
+        } else if (role.equals("ADMIN")) {
+            String[] modules = {"Workshop", "Police", "Insurance", "Customer", "Queries", "Users"};
+            for (int i = 0; i < modules.length; i++) {
+                final int index = i + 1;
+                Tab moduleTab = new Tab(modules[i]);
+                moduleTab.setClosable(false);
+                moduleTab.setStyle("-fx-font-size: 13px;");
+                moduleTab.setOnSelectionChanged(e -> {
+                    if (moduleTab.isSelected() && mainTabPane != null) {
+                        mainTabPane.getSelectionModel().select(index);
+                    }
+                });
+                navTabPane.getTabs().add(moduleTab);
+            }
+        } else if (role.equals("WORKSHOP")) {
+            Tab workshopNavTab = new Tab("Workshop");
             workshopNavTab.setClosable(false);
+            workshopNavTab.setStyle("-fx-font-size: 13px");
             workshopNavTab.setOnSelectionChanged(e -> {
                 if (workshopNavTab.isSelected() && mainTabPane != null) {
                     mainTabPane.getSelectionModel().select(1);
                 }
             });
             navTabPane.getTabs().add(workshopNavTab);
-
-            // Police Module Tab
-            Tab policeNavTab = new Tab("Police Module");
+        } else if (role.equals("POLICE")) {
+            Tab policeNavTab = new Tab("Police");
             policeNavTab.setClosable(false);
-            policeNavTab.setOnSelectionChanged(e -> {
-                if (policeNavTab.isSelected() && mainTabPane != null) {
-                    mainTabPane.getSelectionModel().select(2);
-                }
-            });
-            navTabPane.getTabs().add(policeNavTab);
-
-            // Insurance Module Tab
-            Tab insuranceNavTab = new Tab("Insurance Module");
-            insuranceNavTab.setClosable(false);
-            insuranceNavTab.setOnSelectionChanged(e -> {
-                if (insuranceNavTab.isSelected() && mainTabPane != null) {
-                    mainTabPane.getSelectionModel().select(3);
-                }
-            });
-            navTabPane.getTabs().add(insuranceNavTab);
-
-            // Customer Module Tab
-            Tab customerNavTab = new Tab("Customer Portal");
-            customerNavTab.setClosable(false);
-            customerNavTab.setOnSelectionChanged(e -> {
-                if (customerNavTab.isSelected() && mainTabPane != null) {
-                    mainTabPane.getSelectionModel().select(4);
-                }
-            });
-            navTabPane.getTabs().add(customerNavTab);
-
-            // Queries Tab
-            Tab queriesNavTab = new Tab("Queries");
-            queriesNavTab.setClosable(false);
-            queriesNavTab.setOnSelectionChanged(e -> {
-                if (queriesNavTab.isSelected() && mainTabPane != null) {
-                    mainTabPane.getSelectionModel().select(5);
-                }
-            });
-            navTabPane.getTabs().add(queriesNavTab);
-
-            // User Management Tab
-            Tab adminNavTab = new Tab("User Management");
-            adminNavTab.setClosable(false);
-            adminNavTab.setOnSelectionChanged(e -> {
-                if (adminNavTab.isSelected() && mainTabPane != null) {
-                    mainTabPane.getSelectionModel().select(6);
-                }
-            });
-            navTabPane.getTabs().add(adminNavTab);
-        }
-        // For WORKSHOP role
-        else if (role.equals("WORKSHOP")) {
-            Tab workshopNavTab = new Tab("Workshop Module");
-            workshopNavTab.setClosable(false);
-            workshopNavTab.setOnSelectionChanged(e -> {
-                if (workshopNavTab.isSelected() && mainTabPane != null) {
-                    mainTabPane.getSelectionModel().select(1);
-                }
-            });
-            navTabPane.getTabs().add(workshopNavTab);
-        }
-        // For POLICE role
-        else if (role.equals("POLICE")) {
-            Tab policeNavTab = new Tab("Police Module");
-            policeNavTab.setClosable(false);
+            policeNavTab.setStyle("-fx-font-size: 13px;");
             policeNavTab.setOnSelectionChanged(e -> {
                 if (policeNavTab.isSelected() && mainTabPane != null) {
                     mainTabPane.getSelectionModel().select(1);
                 }
             });
             navTabPane.getTabs().add(policeNavTab);
-        }
-        // For INSURANCE role
-        else if (role.equals("INSURANCE")) {
-            Tab insuranceNavTab = new Tab("Insurance Module");
+        } else if (role.equals("INSURANCE")) {
+            Tab insuranceNavTab = new Tab("Insurance");
             insuranceNavTab.setClosable(false);
+            insuranceNavTab.setStyle("-fx-font-size: 13px;");
             insuranceNavTab.setOnSelectionChanged(e -> {
                 if (insuranceNavTab.isSelected() && mainTabPane != null) {
                     mainTabPane.getSelectionModel().select(1);
@@ -258,103 +187,98 @@ public class DashboardController {
         HBox userBox = new HBox(15);
         userBox.setAlignment(Pos.CENTER_RIGHT);
 
-        Label userLabel = new Label("Welcome back, " + currentUser.getFullName());
-        Label roleLabel = new Label("(" + currentUser.getRoleDisplayName() + ")");
+        VBox userInfo = new VBox(2);
+        userInfo.setAlignment(Pos.CENTER_RIGHT);
+
+        Label userName = new Label(currentUser.getFullName());
+        userName.setStyle("-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #111827;");
+
+        Label userRole = new Label(currentUser.getRoleDisplayName());
+        userRole.setStyle("-fx-font-size: 11px; -fx-text-fill: " + MUTED + ";");
+
+        userInfo.getChildren().addAll(userName, userRole);
 
         Button logoutBtn = new Button("Logout");
+        logoutBtn.setStyle(buttonStyle());
+        logoutBtn.setOnMouseEntered(e -> logoutBtn.setStyle(buttonHover()));
+        logoutBtn.setOnMouseExited(e -> logoutBtn.setStyle(buttonStyle()));
         logoutBtn.setOnAction(e -> handleLogout());
 
-        userBox.getChildren().addAll(userLabel, roleLabel, logoutBtn);
+        userBox.getChildren().addAll(userInfo, logoutBtn);
 
-        topBar.getChildren().addAll(navTabPane, userBox);
+        bar.getChildren().addAll(navTabPane, userBox);
+        HBox.setHgrow(navTabPane, Priority.ALWAYS);
 
-        return topBar;
+        return bar;
     }
 
     private TabPane createTabPane() {
         TabPane tabPane = new TabPane();
         tabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
         tabPane.setTabMinHeight(40);
-        tabPane.setStyle("-fx-tab-max-height: 0; -fx-tab-min-height: 0; -fx-tab-max-width: 0;");
+        tabPane.setStyle("-fx-tab-max-height: 0; -fx-tab-min-height: 0; -fx-tab-max-width: 0; -fx-background-color: " + BG + ";");
 
         String role = currentUser.getRole();
 
-        // Home Tab - EVERYONE
         Tab homeTab = new Tab("Home");
         homeTab.setClosable(false);
         homeTab.setContent(createHomeContent());
         tabPane.getTabs().add(homeTab);
 
-        // For CUSTOMER role: ONLY Home and Customer Portal
         if (role.equals("CUSTOMER")) {
-            // Customer Module Tab
             Tab customerTab = new Tab("Customer Portal");
             customerTab.setClosable(false);
             CustomerController customerController = new CustomerController();
             customerTab.setContent(customerController.createView(currentUser));
             tabPane.getTabs().add(customerTab);
-        }
-        // For ADMIN role: All tabs
-        else if (role.equals("ADMIN")) {
-            // Workshop Module
-            Tab workshopTab = new Tab("Workshop Module");
+        } else if (role.equals("ADMIN")) {
+            Tab workshopTab = new Tab("Workshop");
             workshopTab.setClosable(false);
             workshopTab.setContent(createWorkshopModuleContent());
             tabPane.getTabs().add(workshopTab);
 
-            // Police Module
-            Tab policeTab = new Tab("Police Module");
+            Tab policeTab = new Tab("Police");
             policeTab.setClosable(false);
             PoliceController policeController = new PoliceController();
             policeTab.setContent(policeController.createView(currentUser));
             tabPane.getTabs().add(policeTab);
 
-            // Insurance Module
-            Tab insuranceTab = new Tab("Insurance Module");
+            Tab insuranceTab = new Tab("Insurance");
             insuranceTab.setClosable(false);
             InsuranceController insuranceController = new InsuranceController();
             insuranceTab.setContent(insuranceController.createView(currentUser));
             tabPane.getTabs().add(insuranceTab);
 
-            // Customer Module
-            Tab customerTab = new Tab("Customer Portal");
+            Tab customerTab = new Tab("Customer");
             customerTab.setClosable(false);
             CustomerController customerController = new CustomerController();
             customerTab.setContent(customerController.createView(currentUser));
             tabPane.getTabs().add(customerTab);
 
-            // Queries Tab
             Tab queriesTab = new Tab("Queries");
             queriesTab.setClosable(false);
             QueryManagementController queryManagementController = new QueryManagementController();
             queriesTab.setContent(queryManagementController.createView(currentUser));
             tabPane.getTabs().add(queriesTab);
 
-            // User Management Tab
-            Tab adminTab = new Tab("User Management");
+            Tab adminTab = new Tab("Users");
             adminTab.setClosable(false);
             AdminController adminController = new AdminController();
             adminTab.setContent(adminController.createView(currentUser));
             tabPane.getTabs().add(adminTab);
-        }
-        // For WORKSHOP role
-        else if (role.equals("WORKSHOP")) {
-            Tab workshopTab = new Tab("Workshop Module");
+        } else if (role.equals("WORKSHOP")) {
+            Tab workshopTab = new Tab("Workshop");
             workshopTab.setClosable(false);
             workshopTab.setContent(createWorkshopModuleContent());
             tabPane.getTabs().add(workshopTab);
-        }
-        // For POLICE role
-        else if (role.equals("POLICE")) {
-            Tab policeTab = new Tab("Police Module");
+        } else if (role.equals("POLICE")) {
+            Tab policeTab = new Tab("Police");
             policeTab.setClosable(false);
             PoliceController policeController = new PoliceController();
             policeTab.setContent(policeController.createView(currentUser));
             tabPane.getTabs().add(policeTab);
-        }
-        // For INSURANCE role
-        else if (role.equals("INSURANCE")) {
-            Tab insuranceTab = new Tab("Insurance Module");
+        } else if (role.equals("INSURANCE")) {
+            Tab insuranceTab = new Tab("Insurance");
             insuranceTab.setClosable(false);
             InsuranceController insuranceController = new InsuranceController();
             insuranceTab.setContent(insuranceController.createView(currentUser));
@@ -366,29 +290,27 @@ public class DashboardController {
 
     private VBox createWorkshopModuleContent() {
         VBox container = new VBox(15);
-        container.setPadding(new Insets(10));
-
-        Label moduleTitle = new Label("Workshop Module");
-        moduleTitle.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
+        container.setPadding(new Insets(20));
+        container.setStyle("-fx-background-color: white; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 8, 0, 0, 2);");
 
         TabPane workshopTabPane = new TabPane();
         workshopTabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
+        workshopTabPane.setStyle("-fx-background-color: transparent;");
 
-        // Vehicle Management Tab inside Workshop Module
         Tab vehiclesInnerTab = new Tab("Vehicle Management");
         vehiclesInnerTab.setClosable(false);
         VehicleController vehicleController = new VehicleController();
         vehiclesInnerTab.setContent(vehicleController.createView(currentUser));
         workshopTabPane.getTabs().add(vehiclesInnerTab);
 
-        // Service Records Tab inside Workshop Module
         Tab serviceInnerTab = new Tab("Service Records");
         serviceInnerTab.setClosable(false);
         WorkshopController workshopController = new WorkshopController();
         serviceInnerTab.setContent(workshopController.createView(currentUser));
         workshopTabPane.getTabs().add(serviceInnerTab);
 
-        container.getChildren().addAll(moduleTitle, workshopTabPane);
+        container.getChildren().add(workshopTabPane);
+        VBox.setVgrow(workshopTabPane, Priority.ALWAYS);
 
         return container;
     }
@@ -398,27 +320,16 @@ public class DashboardController {
         scrollPane.setFitToWidth(true);
         scrollPane.setFitToHeight(false);
         scrollPane.setPadding(new Insets(0));
+        scrollPane.setStyle("-fx-background-color: transparent; -fx-border-color: transparent;");
 
-        VBox mainContent = new VBox(20);
-        mainContent.setPadding(new Insets(20));
+        VBox mainContent = new VBox(24);
+        mainContent.setPadding(new Insets(24));
 
-        VBox welcomeCard = new VBox(10);
-        welcomeCard.setPadding(new Insets(15));
-        welcomeCard.setStyle("-fx-border-color: #ddd; -fx-border-radius: 5; -fx-background-color: #f9f9f9;");
-
-        Label welcomeLabel = new Label("Welcome to Vehicle Identification System");
-        welcomeLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
-
-        Label welcomeMessage = new Label("You are logged in as " + currentUser.getRoleDisplayName() +
-                ". Use the tabs above to access your authorized modules.");
-
-        welcomeCard.getChildren().addAll(welcomeLabel, welcomeMessage);
-
+        // Just the stats grid and student section - NO welcome card
         GridPane statsGrid = createStatsGrid();
         HBox splitSection = createSplitStudentSection();
 
-        mainContent.getChildren().addAll(welcomeCard, statsGrid, splitSection);
-
+        mainContent.getChildren().addAll(statsGrid, splitSection);
         scrollPane.setContent(mainContent);
 
         return scrollPane;
@@ -428,7 +339,7 @@ public class DashboardController {
         GridPane grid = new GridPane();
         grid.setHgap(20);
         grid.setVgap(20);
-        grid.setPadding(new Insets(20, 0, 30, 0));
+        grid.setPadding(new Insets(10, 0, 20, 0));
 
         ColumnConstraints col1 = new ColumnConstraints();
         col1.setPercentWidth(25);
@@ -445,43 +356,34 @@ public class DashboardController {
         int policeReports = getPoliceReportsCount();
         int serviceRecords = getServiceRecordsCount();
 
-        VBox card1 = createStatCard("Total Vehicles", String.valueOf(totalVehicles), "Active fleet vehicles");
+        VBox card1 = createStatCard("Total Vehicles", String.valueOf(totalVehicles));
         grid.add(card1, 0, 0);
 
-        VBox card2 = createStatCard("Active Insurance", String.valueOf(activeInsurance), "Active policies");
+        VBox card2 = createStatCard("Active Insurance", String.valueOf(activeInsurance));
         grid.add(card2, 1, 0);
 
-        VBox card3 = createStatCard("Police Reports", String.valueOf(policeReports), "Total reports filed");
+        VBox card3 = createStatCard("Police Reports", String.valueOf(policeReports));
         grid.add(card3, 2, 0);
 
-        VBox card4 = createStatCard("Service Records", String.valueOf(serviceRecords), "Total service records");
+        VBox card4 = createStatCard("Service Records", String.valueOf(serviceRecords));
         grid.add(card4, 3, 0);
-
-        card1.setMaxWidth(Double.MAX_VALUE);
-        card2.setMaxWidth(Double.MAX_VALUE);
-        card3.setMaxWidth(Double.MAX_VALUE);
-        card4.setMaxWidth(Double.MAX_VALUE);
 
         return grid;
     }
 
-    private VBox createStatCard(String title, String value, String subtitle) {
+    private VBox createStatCard(String title, String value) {
         VBox card = new VBox(8);
-        card.setPadding(new Insets(20, 15, 20, 15));
+        card.setPadding(new Insets(20));
         card.setAlignment(Pos.CENTER);
-        card.setStyle("-fx-border-color: #ddd; -fx-border-radius: 8; -fx-background-color: white; -fx-background-radius: 8;");
+        card.setStyle("-fx-background-color: white; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 8, 0, 0, 2);");
 
         Label titleLabel = new Label(title);
-        titleLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #666;");
+        titleLabel.setStyle("-fx-font-size: 13px; -fx-text-fill: " + MUTED + "; -fx-font-weight: 500;");
 
         Label valueLabel = new Label(value);
-        valueLabel.setStyle("-fx-font-size: 32px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;");
+        valueLabel.setStyle("-fx-font-size: 34px; -fx-font-weight: bold; -fx-text-fill: " + TEXT + ";");
 
-        Label subtitleLabel = new Label(subtitle);
-        subtitleLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #999;");
-
-        card.getChildren().addAll(titleLabel, valueLabel, subtitleLabel);
-
+        card.getChildren().addAll(titleLabel, valueLabel);
         return card;
     }
 
@@ -497,13 +399,7 @@ public class DashboardController {
     private int getActiveInsuranceCount() {
         try {
             List<Insurance> insuranceList = InsuranceService.getAllInsurance(currentUser);
-            int count = 0;
-            for (Insurance i : insuranceList) {
-                if ("Active".equals(i.getStatus())) {
-                    count++;
-                }
-            }
-            return count;
+            return (int) insuranceList.stream().filter(i -> "Active".equals(i.getStatus())).count();
         } catch (Exception e) {
             return 0;
         }
@@ -535,7 +431,7 @@ public class DashboardController {
 
     private HBox createSplitStudentSection() {
         HBox splitPane = new HBox(20);
-        splitPane.setPadding(new Insets(10, 0, 10, 0));
+        splitPane.setPadding(new Insets(20, 0, 10, 0));
         splitPane.setAlignment(Pos.TOP_CENTER);
 
         VBox leftSection = createPaginationSection();
@@ -545,19 +441,19 @@ public class DashboardController {
         rightSection.setPrefWidth(550);
         leftSection.setMaxWidth(550);
         rightSection.setMaxWidth(550);
+        leftSection.setStyle("-fx-background-color: white; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 8, 0, 0, 2);");
+        rightSection.setStyle("-fx-background-color: white; -fx-background-radius: 12; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.05), 8, 0, 0, 2);");
 
         splitPane.getChildren().addAll(leftSection, rightSection);
-
         return splitPane;
     }
 
     private VBox createPaginationSection() {
         VBox container = new VBox(10);
-        container.setPadding(new Insets(15));
-        container.setStyle("-fx-border-color: #ddd; -fx-border-radius: 5; -fx-background-color: #fafafa;");
+        container.setPadding(new Insets(20));
 
-        Label sectionTitle = new Label("Student Records (Pagination + ScrollPane)");
-        sectionTitle.setStyle("-fx-font-size: 14px; -fx-font-weight: bold;");
+        Label sectionTitle = new Label("Student Records");
+        sectionTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: " + TEXT + ";");
 
         String[] students = {
                 "Thabo Mokoena", "Mpho Letsie", "Lerato Molapo", "Palesa Motsoeneng", "Tumelo Khotha",
@@ -574,6 +470,7 @@ public class DashboardController {
         int totalPages = (int) Math.ceil((double) students.length / studentsPerPage);
 
         Pagination pagination = new Pagination(totalPages, 0);
+        pagination.setStyle("-fx-padding: 10;");
         pagination.setPageFactory(pageIndex -> {
             VBox pageContent = new VBox(8);
             pageContent.setPadding(new Insets(10));
@@ -582,63 +479,52 @@ public class DashboardController {
             int endIndex = Math.min(startIndex + studentsPerPage, students.length);
 
             Label pageHeader = new Label("Page " + (pageIndex + 1) + " (Students " + (startIndex + 1) + " to " + endIndex + ")");
-            pageHeader.setStyle("-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #555;");
+            pageHeader.setStyle("-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: " + MUTED + ";");
             pageContent.getChildren().add(pageHeader);
 
             for (int i = startIndex; i < endIndex; i++) {
-                VBox studentItem = new VBox(5);
-                studentItem.setStyle("-fx-padding: 8; -fx-background-color: #f9f9f9; -fx-border-color: #eee; -fx-border-radius: 5;");
-
-                HBox nameRow = new HBox(10);
-                nameRow.setAlignment(Pos.CENTER_LEFT);
+                HBox studentRow = new HBox(10);
+                studentRow.setPadding(new Insets(8, 12, 8, 12));
+                studentRow.setStyle("-fx-background-color: #f9fafb; -fx-border-color: #e5e7eb; -fx-border-radius: 6;");
+                studentRow.setAlignment(Pos.CENTER_LEFT);
 
                 Label numberLabel = new Label(String.format("%02d.", (i + 1)));
-                numberLabel.setStyle("-fx-font-weight: bold; -fx-min-width: 35;");
+                numberLabel.setStyle("-fx-font-weight: bold; -fx-min-width: 35; -fx-text-fill: #4b5563;");
 
                 Label nameLabel = new Label(students[i]);
-                nameLabel.setStyle("-fx-font-size: 13px; -fx-font-weight: bold;");
-
-                nameRow.getChildren().addAll(numberLabel, nameLabel);
-
-                HBox progressRow = new HBox(10);
-                progressRow.setAlignment(Pos.CENTER_LEFT);
+                nameLabel.setStyle("-fx-font-size: 13px; -fx-text-fill: #374151;");
 
                 double progressValue = progressPercentages[i] / 100.0;
                 ProgressBar progressBar = new ProgressBar(progressValue);
-                progressBar.setPrefWidth(150);
-                progressBar.setStyle("-fx-accent: #4CAF50;");
+                progressBar.setPrefWidth(120);
+                progressBar.setStyle("-fx-accent: #10b981;");
 
                 Label percentageLabel = new Label(String.format("%.0f%%", progressPercentages[i]));
-                percentageLabel.setStyle("-fx-font-weight: bold; -fx-min-width: 40;");
+                percentageLabel.setStyle("-fx-font-weight: bold; -fx-min-width: 45; -fx-font-size: 12px; -fx-text-fill: #059669;");
 
-                progressRow.getChildren().addAll(progressBar, percentageLabel);
-                studentItem.getChildren().addAll(nameRow, progressRow);
-                pageContent.getChildren().add(studentItem);
+                studentRow.getChildren().addAll(numberLabel, nameLabel, progressBar, percentageLabel);
+                pageContent.getChildren().add(studentRow);
             }
 
             ScrollPane scrollPane = new ScrollPane();
             scrollPane.setContent(pageContent);
             scrollPane.setFitToWidth(true);
-            scrollPane.setPrefHeight(350);
-            scrollPane.setStyle("-fx-background-color: white; -fx-border-color: #ddd; -fx-border-radius: 5;");
+            scrollPane.setPrefHeight(320);
+            scrollPane.setStyle("-fx-background-color: transparent; -fx-border-color: transparent;");
 
             return scrollPane;
         });
 
-        pagination.setStyle("-fx-padding: 10 0 0 0;");
-
         container.getChildren().addAll(sectionTitle, pagination);
-
         return container;
     }
 
     private VBox createScrollableProgressSection() {
         VBox container = new VBox(10);
-        container.setPadding(new Insets(15));
-        container.setStyle("-fx-border-color: #ddd; -fx-border-radius: 5; -fx-background-color: #fafafa;");
+        container.setPadding(new Insets(20));
 
-        Label sectionTitle = new Label("Student Course Progress (All Students)");
-        sectionTitle.setStyle("-fx-font-size: 14px; -fx-font-weight: bold;");
+        Label sectionTitle = new Label("Student Progress");
+        sectionTitle.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: " + TEXT + ";");
 
         String[] students = {
                 "Thabo Mokoena", "Mpho Letsie", "Lerato Molapo", "Palesa Motsoeneng", "Tumelo Khotha",
@@ -654,33 +540,34 @@ public class DashboardController {
 
         ScrollPane scrollPane = new ScrollPane();
         scrollPane.setFitToWidth(true);
-        scrollPane.setPrefHeight(400);
-        scrollPane.setStyle("-fx-background-color: white; -fx-border-color: #ddd; -fx-border-radius: 5;");
+        scrollPane.setPrefHeight(420);
+        scrollPane.setStyle("-fx-background-color: transparent; -fx-border-color: transparent;");
 
-        VBox progressList = new VBox(10);
-        progressList.setPadding(new Insets(10));
+        VBox progressList = new VBox(8);
+        progressList.setPadding(new Insets(5));
 
         double classTotal = 0;
 
         for (int i = 0; i < students.length; i++) {
             VBox studentProgressBox = new VBox(5);
-            studentProgressBox.setStyle("-fx-padding: 10; -fx-background-color: #f9f9f9; -fx-border-color: #eee; -fx-border-radius: 5;");
+            studentProgressBox.setPadding(new Insets(10, 12, 10, 12));
+            studentProgressBox.setStyle("-fx-background-color: #f9fafb; -fx-border-color: #e5e7eb; -fx-border-radius: 6;");
 
             Label studentLabel = new Label((i + 1) + ". " + students[i]);
-            studentLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 13px;");
+            studentLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 13px; -fx-text-fill: #374151;");
 
-            HBox progressRow = new HBox(15);
+            HBox progressRow = new HBox(12);
             progressRow.setAlignment(Pos.CENTER_LEFT);
 
             ProgressBar progressBar = new ProgressBar(progressValues[i]);
-            progressBar.setPrefWidth(200);
-            progressBar.setStyle("-fx-accent: #2196F3;");
+            progressBar.setPrefWidth(180);
+            progressBar.setStyle("-fx-accent: #3b82f6;");
 
             ProgressIndicator progressIndicator = new ProgressIndicator(progressValues[i]);
             progressIndicator.setMaxSize(25, 25);
 
             Label percentageLabel = new Label(String.format("%.0f%%", progressValues[i] * 100));
-            percentageLabel.setStyle("-fx-font-weight: bold; -fx-min-width: 40; -fx-font-size: 12px;");
+            percentageLabel.setStyle("-fx-font-weight: bold; -fx-min-width: 45; -fx-font-size: 12px; -fx-text-fill: #2563eb;");
 
             progressRow.getChildren().addAll(progressBar, progressIndicator, percentageLabel);
             studentProgressBox.getChildren().addAll(studentLabel, progressRow);
@@ -695,23 +582,24 @@ public class DashboardController {
         separator.setPadding(new Insets(15, 0, 10, 0));
 
         VBox overallProgress = new VBox(8);
-        overallProgress.setStyle("-fx-padding: 15; -fx-background-color: #e8f5e9; -fx-border-color: #c8e6c9; -fx-border-radius: 8;");
+        overallProgress.setPadding(new Insets(15));
+        overallProgress.setStyle("-fx-background-color: #f0fdf4; -fx-border-color: #dcfce7; -fx-border-radius: 8;");
 
         Label overallLabel = new Label("Overall Class Progress");
-        overallLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
+        overallLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 13px; -fx-text-fill: #166534;");
 
-        HBox overallRow = new HBox(15);
+        HBox overallRow = new HBox(12);
         overallRow.setAlignment(Pos.CENTER_LEFT);
 
         ProgressBar overallBar = new ProgressBar(classAverage);
-        overallBar.setPrefWidth(200);
-        overallBar.setStyle("-fx-accent: #e63946;");
+        overallBar.setPrefWidth(180);
+        overallBar.setStyle("-fx-accent: #ef4444;");
 
         ProgressIndicator overallIndicator = new ProgressIndicator(classAverage);
         overallIndicator.setMaxSize(30, 30);
 
         Label overallPercentage = new Label(String.format("%.0f%%", classAverage * 100));
-        overallPercentage.setStyle("-fx-font-weight: bold; -fx-font-size: 16px;");
+        overallPercentage.setStyle("-fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: #dc2626;");
 
         overallRow.getChildren().addAll(overallBar, overallIndicator, overallPercentage);
         overallProgress.getChildren().addAll(overallLabel, overallRow);
@@ -720,8 +608,15 @@ public class DashboardController {
         scrollPane.setContent(progressList);
 
         container.getChildren().addAll(sectionTitle, scrollPane);
-
         return container;
+    }
+
+    private void refreshDashboard() {
+        mainTabPane.getTabs().clear();
+        mainTabPane = createTabPane();
+        BorderPane root = (BorderPane) primaryStage.getScene().getRoot();
+        root.setCenter(mainTabPane);
+        AlertUtils.showInfo("Refreshed", "Dashboard has been refreshed.");
     }
 
     private void handleLogout() {
@@ -742,5 +637,20 @@ public class DashboardController {
                 }
             });
         }
+    }
+
+    private String buttonStyle() {
+        return "-fx-background-color: " + PRIMARY + "; -fx-text-fill: white; -fx-background-radius: 8; -fx-padding: 6 14; -fx-cursor: hand;";
+    }
+
+    private String buttonHover() {
+        return "-fx-background-color: " + SECONDARY + "; -fx-text-fill: white; -fx-background-radius: 8; -fx-padding: 6 14; -fx-cursor: hand;";
+    }
+
+    private void fadeIn(Pane p) {
+        FadeTransition ft = new FadeTransition(Duration.millis(400), p);
+        ft.setFromValue(0);
+        ft.setToValue(1);
+        ft.play();
     }
 }
